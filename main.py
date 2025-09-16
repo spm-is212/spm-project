@@ -22,10 +22,10 @@ try:
         dbname=DBNAME
     )
     print("Connection successful!")
-    
+
     # Create a cursor to execute SQL queries
     cursor = connection.cursor()
-    
+
     # Example query
     cursor.execute("SELECT NOW();")
     result = cursor.fetchone()
@@ -37,4 +37,4 @@ try:
     print("Connection closed.")
 
 except Exception as e:
-    print(f"Failed to connect: {e}")main
+    print(f"Failed to connect: {e}")

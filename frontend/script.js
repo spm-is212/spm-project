@@ -156,5 +156,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderTasks();
 });
-
-

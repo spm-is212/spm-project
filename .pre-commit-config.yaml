@@ -1,0 +1,53 @@
+repos:
+  - repo: local
+    hooks:
+      - id: snake-case-only
+        name: Files are snake_case only
+        entry: filenames must be snake_case only
+        language: fail
+        files: "[^a-z0-9._/]"
+        types_or: [ json, python, graphql ]
+      - id: lint-fmt
+        name: Lint (Ruff)
+        entry: ruff check
+        language: python
+        pass_filenames: false
+        require_serial: true
+      - id: pytest
+        name: Run pytest
+        entry: python -m pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+      - id: pytest-cov
+        name: Run pytest with coverage
+        entry: python -m pytest --cov=.
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+        args: [ "--enforce-all" ]
+      - id: check-ast
+      - id: check-docstring-first
+      - id: check-merge-conflict
+      - id: check-json
+        exclude: ".vscode/settings.json"
+      - id: check-toml
+      - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: no-commit-to-branch
+        always_run: false
+        stages: [ commit ]
+      - id: pretty-format-json
+        args: [ "--autofix", "--indent", "    ", "--no-sort-keys" ]
+        exclude: ".vscode/settings.json"
+      - id: trailing-whitespace
