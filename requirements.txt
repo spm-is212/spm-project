@@ -1,0 +1,12 @@
+pytest
+pytest-cov
+pre-commit
+ruff
+fastapi
+pydantic
+dotenv
+psycopg2
+PyJWT
+passlib
+python-multipart
+httpx
