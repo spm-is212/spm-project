@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
+
 @router.post("/register", response_model=UserResponse, status_code=201)
 def register(user: UserCreate):
     existing = supabase.table("users").select("*").eq("email", user.email).execute()
@@ -19,11 +20,11 @@ def register(user: UserCreate):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_pw = hash_password(user.password)
-    result = supabase.table("users").insert({
-        "email": user.email,
-        "password_hash": hashed_pw,
-        "role": user.role
-    }).execute()
+    result = (
+        supabase.table("users")
+        .insert({"email": user.email, "password_hash": hashed_pw, "role": user.role})
+        .execute()
+    )
 
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to register user")
@@ -41,12 +42,10 @@ def login(user: UserLogin):
     if not verify_password(user.password, db_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token({
-        "sub": db_user["id"],
-        "role": db_user["role"]
-    })
+    token = create_access_token({"sub": db_user["id"], "role": db_user["role"]})
 
     return {"access_token": token, "token_type": "bearer"}
+
 
 @router.post("/logout")
 def logout():
