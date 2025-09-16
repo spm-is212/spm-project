@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from utils.security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
