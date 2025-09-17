@@ -1,27 +1,20 @@
 from fastapi import APIRouter, HTTPException
-from supabase import create_client
 from backend.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
 from backend.utils.security import hash_password, verify_password, create_access_token
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
+from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
 def register(user: UserCreate):
-    existing = supabase.table("users").select("*").eq("email", user.email).execute()
+    existing = SupabaseCRUD().client.table("users").select("*").eq("email", user.email).execute()
     if existing.data:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_pw = hash_password(user.password)
     result = (
-        supabase.table("users")
+        SupabaseCRUD().client.table("users")
         .insert({"email": user.email, "password_hash": hashed_pw, "role": user.role})
         .execute()
     )
@@ -34,7 +27,7 @@ def register(user: UserCreate):
 
 @router.post("/login", response_model=TokenResponse)
 def login(user: UserLogin):
-    result = supabase.table("users").select("*").eq("email", user.email).execute()
+    result = SupabaseCRUD().client.table("users").select("*").eq("email", user.email).execute()
     if not result.data:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
