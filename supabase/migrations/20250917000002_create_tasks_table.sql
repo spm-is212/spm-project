@@ -1,19 +1,22 @@
 -- Create tasks table
 CREATE TABLE IF NOT EXISTS tasks (
-  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  uuid TEXT PRIMARY KEY,
+  user_uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
-  uuid TEXT UNIQUE NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL,
+  deadline TIMESTAMPTZ,
+  notes TEXT,
+  invited_collaborators TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_uuid ON tasks(uuid);
+-- Create indexes for fast lookups
+CREATE INDEX IF NOT EXISTS idx_tasks_user_uuid ON tasks(user_uuid);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline);
+CREATE INDEX IF NOT EXISTS idx_tasks_collaborators ON tasks USING GIN(invited_collaborators);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

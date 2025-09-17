@@ -23,9 +23,22 @@ class SupabaseClient:
 
     @property
     def client(self):
-        """Get the Supabase client instance"""
+        """
+        Get the Supabase client instance
+
+        Returns:
+            _type_: Supabase client instance
+        """
         return self._client
 
     def get_table(self, table_name: str):
-        """Get a table reference for operations"""
+        """
+        Get a reference to a specific table
+
+        Args:
+            table_name (str): Name of the table
+
+        Returns:
+            _type_: Table reference
+        """
         return self._client.table(table_name)

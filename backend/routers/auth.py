@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from supabase import create_client
-from schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
-from utils.security import hash_password, verify_password, create_access_token
+from backend.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
+from backend.utils.security import hash_password, verify_password, create_access_token
 import os
 from dotenv import load_dotenv
 

@@ -10,3 +10,4 @@ passlib
 python-multipart
 httpx
 supabase
+email-validator
