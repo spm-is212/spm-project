@@ -17,21 +17,19 @@ repos:
       - id: pytest
         name: Run pytest
         entry: pytest
-        language: python
+        language: system
         types: [python]
         pass_filenames: false
         always_run: true
         stages: [pre-commit, pre-push]
-        additional_dependencies: [pytest, fastapi, pydantic, PyJWT, passlib, python-multipart, httpx]
       - id: pytest-cov
         name: Run pytest with coverage
         entry: pytest --cov=.
-        language: python
+        language: system
         types: [python]
         pass_filenames: false
         always_run: true
         stages: [pre-push]
-        additional_dependencies: [pytest, pytest-cov, fastapi, pydantic, PyJWT, passlib, python-multipart, httpx]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -49,7 +47,7 @@ repos:
       - id: end-of-file-fixer
       - id: no-commit-to-branch
         always_run: false
-        stages: [ commit ]
+        stages: [ pre-commit ]
       - id: pretty-format-json
         args: [ "--autofix", "--indent", "    ", "--no-sort-keys" ]
         exclude: ".vscode/settings.json"

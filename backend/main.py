@@ -1,12 +1,9 @@
-# backend/main.py
-# from fastapi import FastAPI
-from backend.core.database import Base, engine
+from fastapi import FastAPI
+from backend.routers import auth, task, health, crud_test
 
-# app = FastAPI()
+app = FastAPI(title="SPM Project API")
 
-# Automatically create all tables in the database
-Base.metadata.create_all(bind=engine)
-
-# @app.get("/")
-# def read_root():
-#     return {"message": "Hello, world!"}
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(task.router)
+app.include_router(crud_test.router)
