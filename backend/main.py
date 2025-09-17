@@ -1,7 +1,6 @@
 # backend/main.py
 # from fastapi import FastAPI
 from backend.core.database import Base, engine
-from backend.models import user, task  # import your models
 
 # app = FastAPI()
 

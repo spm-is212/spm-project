@@ -15,19 +15,25 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+
 # Password utils
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
 
 # JWT utils
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def decode_token(token: str):
     try:
@@ -36,13 +42,16 @@ def decode_token(token: str):
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
 # Dependencies
 def get_current_user(token: str = Depends(oauth2_scheme)):
     return decode_token(token)
+
 
 def require_role(roles: list[str]):
     def wrapper(user=Depends(get_current_user)):
         if user.get("role") not in roles:
             raise HTTPException(status_code=403, detail="Forbidden")
         return user
+
     return wrapper

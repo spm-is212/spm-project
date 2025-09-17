@@ -15,11 +15,7 @@ DBNAME = os.getenv("dbname")
 # Connect to the database
 try:
     connection = psycopg2.connect(
-        user=USER,
-        password=PASSWORD,
-        host=HOST,
-        port=PORT,
-        dbname=DBNAME
+        user=USER, password=PASSWORD, host=HOST, port=PORT, dbname=DBNAME
     )
     print("Connection successful!")
 

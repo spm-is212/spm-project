@@ -13,22 +13,25 @@ repos:
         language: python
         pass_filenames: false
         require_serial: true
+        additional_dependencies: [ruff]
       - id: pytest
         name: Run pytest
-        entry: python -m pytest
-        language: system
+        entry: pytest
+        language: python
         types: [python]
         pass_filenames: false
         always_run: true
         stages: [pre-commit, pre-push]
+        additional_dependencies: [pytest, fastapi, pydantic, PyJWT, passlib, python-multipart, httpx]
       - id: pytest-cov
         name: Run pytest with coverage
-        entry: python -m pytest --cov=.
-        language: system
+        entry: pytest --cov=.
+        language: python
         types: [python]
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+        additional_dependencies: [pytest, pytest-cov, fastapi, pydantic, PyJWT, passlib, python-multipart, httpx]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
