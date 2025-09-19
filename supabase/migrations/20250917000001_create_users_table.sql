@@ -1,6 +1,7 @@
 -- Create users table
+drop table if exists users cascade;
 CREATE TABLE IF NOT EXISTS users (
-  uuid TEXT PRIMARY KEY,
+  uuid uuid primary key default gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user',

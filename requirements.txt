@@ -12,3 +12,5 @@ httpx
 supabase
 email-validator
 uvicorn
+dotenv
+bcrypt
