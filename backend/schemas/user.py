@@ -15,7 +15,7 @@ class UserLogin(BaseModel):
 
 # Output schemas
 class UserResponse(BaseModel):
-    id: str
+    uuid: str
     email: EmailStr
     role: str
 
