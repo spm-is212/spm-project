@@ -13,9 +13,10 @@ repos:
         language: python
         pass_filenames: false
         require_serial: true
+        additional_dependencies: [ruff]
       - id: pytest
         name: Run pytest
-        entry: python -m pytest
+        entry: pytest
         language: system
         types: [python]
         pass_filenames: false
@@ -23,7 +24,7 @@ repos:
         stages: [pre-commit, pre-push]
       - id: pytest-cov
         name: Run pytest with coverage
-        entry: python -m pytest --cov=.
+        entry: pytest --cov=.
         language: system
         types: [python]
         pass_filenames: false
@@ -46,7 +47,7 @@ repos:
       - id: end-of-file-fixer
       - id: no-commit-to-branch
         always_run: false
-        stages: [ commit ]
+        stages: [ pre-commit ]
       - id: pretty-format-json
         args: [ "--autofix", "--indent", "    ", "--no-sort-keys" ]
         exclude: ".vscode/settings.json"
