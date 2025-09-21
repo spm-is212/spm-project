@@ -15,7 +15,6 @@ from backend.routers import auth, task, health, crud_test
 from pydantic import BaseModel
 import jwt
 from datetime import datetime, timedelta, timezone
-from backend import settings  # Assuming you have settings file for secure key storage
 import os
 from dotenv import load_dotenv
 
