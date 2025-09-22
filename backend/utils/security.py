@@ -3,7 +3,8 @@ import jwt
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -13,7 +14,8 @@ SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+bearer_scheme = HTTPBearer()
 
 
 # Password utils
@@ -44,8 +46,8 @@ def decode_token(token: str):
 
 
 # Dependencies
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    return decode_token(token)
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    return decode_token(credentials.credentials)
 
 
 def require_role(roles: list[str]):
