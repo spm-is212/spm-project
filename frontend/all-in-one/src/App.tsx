@@ -1,5 +1,4 @@
 import { Routes, Route, Link } from "react-router-dom";
-import Auth from "./pages/Auth";
 
 
 function App() {
@@ -14,7 +13,6 @@ function App() {
       {/* routing */}
       <Routes>
 
-npm install
         <Route path="/auth" element={<Auth />} />
       </Routes>
     </div>
