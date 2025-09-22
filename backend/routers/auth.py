@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from backend.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
-from backend.utils.security import hash_password, verify_password, create_access_token
+from backend.schemas.user import UserLogin, TokenResponse
+from backend.utils.security import verify_password, create_access_token
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
