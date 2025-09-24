@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+// need to install uuid: npm install uuid
 import { v4 as uuidv4 } from 'uuid';
-import type { Task } from '../types/Task';
+import type { Task } from '../../types/Task';
 import TaskForm from './TaskForm';
 import TaskList from './TaskList';
 
