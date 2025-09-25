@@ -3,8 +3,7 @@ import { Check } from 'lucide-react';
 import type { FormData, FormErrors } from '../../types/auth';
 import '.';
 
-const LoginSignupPage: React.FC = () => {
-  const [isSignUp, setIsSignUp] = useState(true);
+const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     username: '',
     email: '',
@@ -21,7 +20,6 @@ const LoginSignupPage: React.FC = () => {
       [name]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
@@ -49,16 +47,6 @@ const LoginSignupPage: React.FC = () => {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
-    }
-
-    if (isSignUp) {
-      if (!formData.confirmPassword) {
-        newErrors.confirmPassword = 'Please confirm your password';
-      } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = 'Passwords do not match';
-      }
     }
 
     setErrors(newErrors);
@@ -73,17 +61,15 @@ const LoginSignupPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       console.log('Form submitted:', { 
-        action: isSignUp ? 'Sign Up' : 'Sign In',
-        data: { ...formData, password: '[HIDDEN]', confirmPassword: '[HIDDEN]' }
+        action: 'Sign In',
+        data: { ...formData, password: '[HIDDEN]' }
       });
       
-      alert(`${isSignUp ? 'Account created' : 'Signed in'} successfully!`);
+      alert('Signed in successfully!');
       
-      // Reset form after successful submission
       setFormData({
         username: '',
         email: '',
@@ -99,17 +85,6 @@ const LoginSignupPage: React.FC = () => {
     }
   };
 
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp);
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    });
-    setErrors({});
-  };
-
   return (
     <div className="login-container">
       <div className="login-card">
@@ -119,9 +94,7 @@ const LoginSignupPage: React.FC = () => {
             <Check className="logo-check" strokeWidth={3} />
           </div>
           <h1 className="heading-secondary">ALL-IN-ONE</h1>
-          <h2 className="heading-primary">
-            {isSignUp ? 'Sign Up' : 'Sign In'}
-          </h2>
+          <h2 className="heading-primary">Sign In</h2>
         </div>
 
         {/* General Error */}
@@ -190,74 +163,25 @@ const LoginSignupPage: React.FC = () => {
             )}
           </div>
 
-          {/* Confirm Password Field - Only for Sign Up */}
-          {isSignUp && (
-            <div className="form-field form-transition">
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                className={`form-input ${errors.confirmPassword ? 'form-input-error' : 'form-input-normal'}`}
-                aria-invalid={errors.confirmPassword ? 'true' : 'false'}
-                aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
-              />
-              {errors.confirmPassword && (
-                <p id="confirm-password-error" className="error-text" role="alert">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Submit Button */}
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="btn-primary"
-            aria-label={`${isSignUp ? 'Create account' : 'Sign in to account'}`}
+            aria-label="Sign in to account"
           >
             {isSubmitting ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
-                {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                Signing In...
               </div>
             ) : (
-              isSignUp ? 'Sign Up' : 'Sign In'
+              'Sign In'
             )}
           </button>
         </div>
-
-        {/* Toggle Between Sign Up and Sign In */}
-        <div className="toggle-section">
-          <p className="text-body">
-            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={toggleMode}
-              className="link-primary"
-              type="button"
-            >
-              {isSignUp ? 'Sign In' : 'Sign Up'}
-            </button>
-          </p>
-        </div>
-
-        {/* Additional Links */}
-        {!isSignUp && (
-          <div className="forgot-password-section">
-            <button 
-              className="text-small link-primary"
-              type="button"
-              onClick={() => alert('Forgot password functionality would go here')}
-            >
-              Forgot your password?
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
-export default LoginSignupPage;
+export default LoginPage;
