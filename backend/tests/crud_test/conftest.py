@@ -1,5 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
+from fastapi.testclient import TestClient
+from backend.main import app
 
 
 @pytest.fixture
@@ -18,3 +20,9 @@ def mock_supabase_crud():
         mock_crud_instance = Mock()
         mock_crud_class.return_value = mock_crud_instance
         yield mock_crud_instance
+
+
+@pytest.fixture
+def client():
+    """Create test client"""
+    return TestClient(app)

@@ -39,7 +39,7 @@ def test_login_success(monkeypatch):
 
     response = client.post(
         "/api/auth/login",
-        json={"email": "admin@example.com", "password": "supersecret"},
+       data={"username": "admin@example.com", "password": "supersecret"}
     )
     assert response.status_code == 200
     body = response.json()
@@ -62,7 +62,7 @@ def test_login_invalid_password(monkeypatch):
 
     response = client.post(
         "/api/auth/login",
-        json={"email": "admin@example.com", "password": "wrongpass"},
+        data={"username": "admin@example.com", "password": "wrongpass"},
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid credentials"
@@ -78,7 +78,7 @@ def test_login_user_not_found(monkeypatch):
 
     response = client.post(
         "/api/auth/login",
-        json={"email": "ghost@example.com", "password": "irrelevant"},
+        data={"username": "ghost@example.com", "password": "irrelevant"}
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid credentials"

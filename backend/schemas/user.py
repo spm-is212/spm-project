@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import List
 
 
 # Input schemas
@@ -6,6 +7,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: str = "staff"  # default role
+    departments: List[str]
 
 
 class UserLogin(BaseModel):
@@ -18,6 +20,7 @@ class UserResponse(BaseModel):
     uuid: str
     email: EmailStr
     role: str
+    departments: List[str]
 
 
 class TokenResponse(BaseModel):
