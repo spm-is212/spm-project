@@ -128,12 +128,11 @@ class TestTaskCreator:
         subtasks = [SubtaskCreate(**subtask_data)]
 
         # Act
-        result = creator.create_task_with_subtasks("test-user-id", main_task, subtasks)
+        creator.create_task_with_subtasks("test-user-id", main_task, subtasks)
 
-        # Assert
+        # Assert - creator should be auto-assigned
         subtask_call = mock_crud.insert.call_args_list[1]
-        assert subtask_call[0][1]["assignee_ids"] == []
-        assert result["subtasks"][0]["assignee_ids"] == []
+        assert subtask_call[0][1]["assignee_ids"] == ["test-user-id"]
 
     def test_owner_user_id_set_for_all_tasks(self, mock_crud, sample_task_data, sample_subtask_data):
         """Test that owner_user_id is set correctly for main task and subtasks"""

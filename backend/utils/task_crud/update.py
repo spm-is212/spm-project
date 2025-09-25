@@ -12,13 +12,28 @@ class TaskUpdater:
         self.crud = SupabaseCRUD()
         self.table_name = "tasks"
 
-    def update_tasks(self, main_task_id: str, user_role: str, main_task: Optional[TaskUpdate] = None, subtasks: Optional[Dict[str, TaskUpdate]] = None) -> Dict[str, Any]:
+    def can_remove_assignees(self, user_role: str, user_teams: list) -> bool:
+        """
+        Check if user can remove assignee IDs based on role and teams
+
+        Rules:
+        - Role is "manager" or "director"
+        - Teams include "sales manager" or "finance managers"
+        """
+        if user_role in ["manager", "director"]:
+            return True
+
+        privileged_teams = ["sales manager", "finance managers"]
+        return any(team in privileged_teams for team in user_teams)
+
+    def update_tasks(self, main_task_id: str, user_role: str, user_teams: list, main_task: Optional[TaskUpdate] = None, subtasks: Optional[Dict[str, TaskUpdate]] = None) -> Dict[str, Any]:
         """
         Update main task and/or subtasks
 
         Args:
             main_task_id: ID of the main task
             user_role: Role of the user updating the tasks
+            user_teams: Teams the user belongs to
             main_task: Optional main task update data
             subtasks: Optional dictionary of {subtask_id: TaskUpdate} for updates
 
@@ -50,7 +65,7 @@ class TaskUpdater:
                     new_assignees = set(main_task.assignee_ids)
 
                     if new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees):
-                        if user_role == "manager":
+                        if self.can_remove_assignees(user_role, user_teams):
                             main_task_dict["assignee_ids"] = main_task.assignee_ids
                     else:
                         main_task_dict["assignee_ids"] = main_task.assignee_ids
@@ -86,7 +101,7 @@ class TaskUpdater:
                         new_assignees = set(subtask_data.assignee_ids)
 
                         if new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees):
-                            if user_role == "manager":
+                            if self.can_remove_assignees(user_role, user_teams):
                                 subtask_dict["assignee_ids"] = subtask_data.assignee_ids
                         else:
                             subtask_dict["assignee_ids"] = subtask_data.assignee_ids

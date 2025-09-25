@@ -47,8 +47,7 @@ class TaskCreate(BaseModel):
     @field_validator('assignee_ids')
     @classmethod
     def assignee_ids_not_empty(cls, v):
-        if len(v) == 0:
-            raise ValueError('Assignee IDs list cannot be empty')
+        # Allow empty assignee list - creator will be auto-assigned in TaskCreator
         return v
 
     @field_validator('due_date')
@@ -86,8 +85,7 @@ class SubtaskCreate(BaseModel):
     @field_validator('assignee_ids')
     @classmethod
     def assignee_ids_not_empty_if_provided(cls, v):
-        if v is not None and len(v) == 0:
-            raise ValueError('Assignee IDs list cannot be empty if provided')
+        # Allow empty assignee list - creator will be auto-assigned in TaskCreator
         return v
 
     @field_validator('due_date')
@@ -124,8 +122,7 @@ class TaskUpdate(BaseModel):
     @field_validator('assignee_ids')
     @classmethod
     def assignee_ids_not_empty_if_provided(cls, v):
-        if v is not None and len(v) == 0:
-            raise ValueError('Assignee IDs list cannot be empty if provided')
+        # Allow empty list for testing assignee removal
         return v
 
     @field_validator('due_date')

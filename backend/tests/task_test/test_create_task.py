@@ -79,9 +79,9 @@ def test_create_subtask_without_assignees(auth_headers, sample_main_task, patch_
     assert response.status_code == 200
     data = response.json()
 
-    # Check subtask has empty assignee_ids array
+    # Check subtask has creator auto-assigned
     assert len(data["subtasks"]) == 1
-    assert data["subtasks"][0]["assignee_ids"] == []
+    assert data["subtasks"][0]["assignee_ids"] == ["00000000-0000-0000-0000-000000000001"]
 
 
 def test_create_task_without_auth_fails(sample_main_task):

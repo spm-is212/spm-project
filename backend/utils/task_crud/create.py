@@ -5,7 +5,7 @@ from backend.schemas.task import TaskCreate, MAIN_TASK_PARENT_ID
 
 class TaskCreator:
     """
-    Task creation utilities using OOP principles
+    Task creation utilities
     """
 
     def __init__(self):
@@ -24,6 +24,10 @@ class TaskCreator:
         Returns:
             Dictionary containing main task and created subtasks
         """
+        assignee_ids = list(main_task.assignee_ids) if main_task.assignee_ids else []
+        if user_id not in assignee_ids:
+            assignee_ids.append(user_id)
+
         main_task_dict = {
             "title": main_task.title,
             "description": main_task.description,
@@ -31,7 +35,7 @@ class TaskCreator:
             "status": main_task.status.value,
             "priority": main_task.priority.value,
             "owner_user_id": user_id,
-            "assignee_ids": main_task.assignee_ids,
+            "assignee_ids": assignee_ids,
             "parent_id": MAIN_TASK_PARENT_ID,
             "comments": [],
             "attachments": [],
@@ -47,6 +51,10 @@ class TaskCreator:
 
         if subtasks:
             for subtask_data in subtasks:
+                subtask_assignee_ids = list(subtask_data.assignee_ids) if subtask_data.assignee_ids else []
+                if user_id not in subtask_assignee_ids:
+                    subtask_assignee_ids.append(user_id)
+
                 subtask_dict = {
                     "title": subtask_data.title,
                     "description": subtask_data.description,
@@ -54,7 +62,7 @@ class TaskCreator:
                     "status": subtask_data.status.value,
                     "priority": subtask_data.priority.value,
                     "owner_user_id": user_id,
-                    "assignee_ids": subtask_data.assignee_ids or [],  # Use empty array if None
+                    "assignee_ids": subtask_assignee_ids,
                     "parent_id": created_main_task["id"],  # Set parent to main task ID
                     "comments": [],
                     "attachments": [],

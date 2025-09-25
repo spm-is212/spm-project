@@ -37,7 +37,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if not verify_password(form_data.password, db_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token({"sub": db_user["uuid"], "role": db_user["role"]})
+    token = create_access_token({
+        "sub": db_user["uuid"],
+        "role": db_user["role"],
+        "teams": db_user.get("teams", []),
+        "departments": db_user.get("departments", [])
+    })
 
     return {"access_token": token, "token_type": "bearer"}
 

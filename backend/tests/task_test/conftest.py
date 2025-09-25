@@ -112,3 +112,9 @@ def patch_crud_for_testing(monkeypatch):
     yield
 
     # Cleanup is automatic when monkeypatch fixture ends
+    # Additional cleanup: ensure test tables are completely clear
+    from backend.tests.utils.cleanup import clear_all_test_data
+    try:
+        clear_all_test_data()
+    except Exception:
+        pass  # Cleanup is optional
