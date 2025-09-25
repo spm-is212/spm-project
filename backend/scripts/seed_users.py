@@ -1,4 +1,3 @@
-import os
 from backend.utils.security import hash_password
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 
