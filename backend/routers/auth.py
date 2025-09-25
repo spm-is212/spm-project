@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from backend.schemas.user import UserCreate, UserResponse, TokenResponse
 from backend.utils.security import hash_password, verify_password, create_access_token, get_current_user
+
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.utils.user_crud.user_manager import UserManager
 
@@ -43,7 +44,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         "teams": db_user.get("teams", []),
         "departments": db_user.get("departments", [])
     })
-
     return {"access_token": token, "token_type": "bearer"}
 
 
