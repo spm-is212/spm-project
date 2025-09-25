@@ -1,0 +1,244 @@
+.login-container {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/* Card wrapper */
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: transparent;
+}
+
+/* Logo section */
+.logo-container {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background-color: #4A90E2;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.logo-check {
+  width: 24px;
+  height: 24px;
+  color: white;
+  stroke-width: 3;
+}
+
+/* Typography */
+.logo-container h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #000000;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+.logo-container h2 {
+  font-size: 36px;
+  font-weight: 700;
+  color: #000000;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+/* Form container */
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Form fields */
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field input,
+.form-input {
+  width: 100%;
+  height: 56px;
+  padding: 0 16px;
+  border: 2px solid #E8E8E8;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #666666;
+  background-color: #FFFFFF;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.form-field input:focus,
+.form-input:focus {
+  outline: none;
+  border-color: #4A90E2;
+}
+
+.form-field input::placeholder,
+.form-input::placeholder {
+  color: #999999;
+  font-weight: 400;
+}
+
+/* Error states */
+.form-input-error {
+  border-color: #E74C3C !important;
+}
+
+.form-input-normal {
+  border-color: #E8E8E8;
+}
+
+/* Primary button */
+.btn-primary {
+  width: 100%;
+  height: 56px;
+  background-color: #4A90E2;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 8px;
+  font-family: inherit;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #357ABD;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Toggle section */
+.toggle-section {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.toggle-section p {
+  color: #666666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Links */
+.link-primary {
+  color: #4A90E2;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.link-primary:hover {
+  text-decoration: underline;
+}
+
+/* Forgot password section */
+.forgot-password-section {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.forgot-password-section button {
+  color: #4A90E2;
+  font-size: 14px;
+  font-weight: 400;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.forgot-password-section button:hover {
+  text-decoration: underline;
+}
+
+/* Error messages */
+.error-text {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #E74C3C;
+  margin-left: 4px;
+}
+
+/* Loading states */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid #FFFFFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.form-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 1rem;
+  }
+  
+  .login-card {
+    max-width: 320px;
+  }
+  
+  .logo-container {
+    margin-bottom: 2rem;
+  }
+  
+  .logo-container h1 {
+    font-size: 20px;
+  }
+  
+  .logo-container h2 {
+    font-size: 28px;
+  }
+  
+  .form-field input,
+  .form-input,
+  .btn-primary {
+    height: 48px;
+  }
+  
+  .form-container {
+    gap: 12px;
+  }
+}

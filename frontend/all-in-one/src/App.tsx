@@ -1,20 +1,13 @@
-import { Routes, Route, Link } from "react-router-dom";
-import Auth from "./pages/Auth";
-
+import { Routes, Route } from "react-router-dom";
+import LoginPage from './components/signuppage/login'
+import TaskManager from './components/TaskManagement/TaskManager'
 
 function App() {
   return (
-    <div>
-      {/* navbar */}
-      <nav>
-
-        <Link to="/auth">Auth</Link> {" "}
-      </nav>
-
-      {/* routing */}
+    <div className="App">
       <Routes>
-
-        <Route path="/auth" element={<Auth />} />
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/taskmanager" element={<TaskManager />} />
       </Routes>
     </div>
   );
