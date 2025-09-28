@@ -1,19 +1,26 @@
-// whenever you want to hit a protected endpoint that requires the JWT.
 export async function apiFetch(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem("access_token");
 
-  const headers = {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
-    Authorization: token ? `Bearer ${token}` : "",
   };
 
-  const res = await fetch(`http://localhost:8000${url}`, {
+  const res = await fetch(`http://localhost:8000/api/${url}`, {
     ...options,
     headers,
   });
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    let message = `API error: ${res.status}`;
+    try {
+      const err = await res.json();
+      if (err.detail) message = err.detail;
+    } catch {
+      // fallback if not JSON
+    }
+    throw new Error(message);
   }
   return res.json();
 }
