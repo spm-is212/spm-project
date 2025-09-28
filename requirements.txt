@@ -13,4 +13,4 @@ supabase
 email-validator
 uvicorn
 dotenv
-bcrypt
+bcrypt==4.2.0
