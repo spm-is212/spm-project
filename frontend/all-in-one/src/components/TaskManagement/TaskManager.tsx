@@ -95,7 +95,7 @@ const updateTask = async (taskId: string, taskData: any) => {
         priority: taskData.priority.toUpperCase(),
         assignee_ids: userId ? [userId] : []
       },
-      subtasks: []
+      subtasks: {}
     };
 
     await apiFetch("tasks/updateTask", {
