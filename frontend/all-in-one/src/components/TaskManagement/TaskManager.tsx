@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Calendar, User, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Calendar, User, AlertCircle, Shield } from 'lucide-react'; 
 import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
+import { getUserFromToken } from '../../utils/auth';
+
 
 const TaskManager = () => {
   const [tasks, setTasks] = useState([]);
@@ -17,6 +19,14 @@ const TaskManager = () => {
     due_date: '',
     assigned_to: ''
   });
+  const [userInfo, setUserInfo] = useState<{ email: string; role: string } | null>(null);
+
+  useEffect(() => {
+    const user = getUserFromToken();
+    if (user) setUserInfo(user);
+  }, []);
+
+
 
 // fetch tasks
 const fetchTasks = async () => {
@@ -61,7 +71,7 @@ const createTask = async (taskData: any) => {
         priority: taskData.priority.toUpperCase(),
         assignee_ids: userId ? [userId] : []   // auto-assign logged-in user
       },
-      subtasks: []
+      subtasks: {}
     };
 
     await apiFetch("tasks/createTask", {
@@ -179,7 +189,22 @@ const deleteTask = async (taskId: string) => {
           <LogoutButton />
         </div>
         <p className="text-gray-600">Manage your tasks efficiently with full CRUD operations</p>
-      </div>
+
+        {userInfo && (
+          <div className="mb-6 p-4 bg-gray-50 border rounded-lg flex items-center space-x-4 shadow-sm">
+            <div className="flex items-center space-x-2">
+              <User className="w-5 h-5 text-blue-600" />
+              <span className="text-gray-800 font-medium">{userInfo.department}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-green-600" />
+              <span className="uppercase text-sm font-semibold text-green-700">
+                {userInfo.role}
+              </span>
+            </div>
+          </div>
+        )}
+
 
       {/* Error Alert */}
       {error && (
@@ -456,6 +481,7 @@ const deleteTask = async (taskId: string) => {
           </button>
         </div>
       )}
+    </div>    
     </div>
   );
 };
