@@ -4,6 +4,7 @@ import type { FormData, FormErrors } from '../../types/auth';
 import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
+
   const navigate = useNavigate();
       useEffect(() => {
         document.title = "All IN ONE";
@@ -13,6 +14,7 @@ const LoginPage: React.FC = () => {
     password: '',
     confirmPassword: ''
   });
+
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,11 +38,12 @@ const LoginPage: React.FC = () => {
     const newErrors: FormErrors = {};
 
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.username)) {
-      newErrors.username = 'Please enter a valid email';
-    }
+
+  if (!formData.username.trim()) {
+    newErrors.username = 'Email is required';
+  } else if (!/\S+@\S+\.\S+/.test(formData.username)) {
+    newErrors.username = 'Please enter a valid email';
+  }
 
 
     if (!formData.password) {
