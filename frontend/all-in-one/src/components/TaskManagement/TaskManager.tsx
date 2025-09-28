@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X, Calendar, User, AlertCircle } from 'lucide-react';
 import LogoutButton from '../../components/auth/logoutbtn';
+import { apiFetch } from "../../utils/api";
 
 const TaskManager = () => {
   const [tasks, setTasks] = useState([]);
@@ -17,119 +18,115 @@ const TaskManager = () => {
     assigned_to: ''
   });
 
-  // API base URL - adjust this to match your backend structure
-  const API_BASE_URL = 'http://127.0.0.1:8000/tasks';
+// fetch tasks
+const fetchTasks = async () => {
+  setLoading(true);
+  setError("");
+  try {
+    const data = await apiFetch("tasks/readTasks");  // <-- use apiFetch
+    setTasks(data.tasks);
+  } catch (err: any) {
+    setError(`Failed to fetch tasks: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  // Fetch all tasks
-  const fetchTasks = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch(API_BASE_URL);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setTasks(data);
-    } catch (err) {
-      setError(`Failed to fetch tasks: ${err.message}`);
-      console.error('Error fetching tasks:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+function getUserIdFromToken(): string | null {
+  const token = localStorage.getItem("access_token");
+  if (!token) return null;
 
-  // Create new task
-  const createTask = async (taskData) => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const newTask = await response.json();
-      setTasks([...tasks, newTask]);
-      setShowAddForm(false);
-      setNewTask({
-        title: '',
-        description: '',
-        status: 'pending',
-        priority: 'medium',
-        due_date: '',
-        assigned_to: ''
-      });
-    } catch (err) {
-      setError(`Failed to create task: ${err.message}`);
-      console.error('Error creating task:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const payloadBase64 = token.split(".")[1];
+    const payloadDecoded = JSON.parse(atob(payloadBase64));
+    return payloadDecoded.sub || null;  // backend expects "sub" field
+  } catch (e) {
+    console.error("Failed to decode JWT", e);
+    return null;
+  }
+}
 
-  // Update task
-  const updateTask = async (taskId, taskData) => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch(`${API_BASE_URL}/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const updatedTask = await response.json();
-      setTasks(tasks.map(task => 
-        task.id === taskId ? updatedTask : task
-      ));
-      setEditingTask(null);
-    } catch (err) {
-      setError(`Failed to update task: ${err.message}`);
-      console.error('Error updating task:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Delete task
-  const deleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) {
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch(`${API_BASE_URL}/${taskId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      setTasks(tasks.filter(task => task.id !== taskId));
-    } catch (err) {
-      setError(`Failed to delete task: ${err.message}`);
-      console.error('Error deleting task:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const createTask = async (taskData: any) => {
+  setLoading(true);
+  setError("");
+  try {
+    const userId = getUserIdFromToken();
+
+    const payload = {
+      main_task: {
+        title: taskData.title,
+        description: taskData.description,
+        due_date: taskData.due_date,
+        priority: taskData.priority.toUpperCase(),
+        assignee_ids: userId ? [userId] : []   // auto-assign logged-in user
+      },
+      subtasks: []
+    };
+
+    await apiFetch("tasks/createTask", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    await fetchTasks();
+    setShowAddForm(false);
+    setNewTask({ title: "", description: "", status: "pending", priority: "medium", due_date: "", assigned_to: "" });
+  } catch (err: any) {
+    setError(`Failed to create task: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const updateTask = async (taskId: string, taskData: any) => {
+  setLoading(true);
+  setError("");
+  try {
+    const userId = getUserIdFromToken();
+
+    const payload = {
+      main_task_id: taskId,
+      main_task: {
+        title: taskData.title,
+        description: taskData.description,
+        due_date: taskData.due_date,
+        priority: taskData.priority.toUpperCase(),
+        assignee_ids: userId ? [userId] : []
+      },
+      subtasks: {}
+    };
+
+    await apiFetch("tasks/updateTask", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+
+    await fetchTasks();
+    setEditingTask(null);
+  } catch (err: any) {
+    setError(`Failed to update task: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+// delete task
+const deleteTask = async (taskId: string) => {
+  if (!window.confirm("Are you sure you want to delete this task?")) return;
+  setLoading(true);
+  setError("");
+  try {
+    await apiFetch(`/tasks/deleteTask/${taskId}`, { method: "DELETE" }); // <-- use apiFetch
+    setTasks(tasks.filter((task) => task.id !== taskId));
+  } catch (err: any) {
+    setError(`Failed to delete task: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Load tasks on component mount
   useEffect(() => {
