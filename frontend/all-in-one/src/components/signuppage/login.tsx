@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { Check } from 'lucide-react';
 import type { FormData, FormErrors } from '../../types/auth';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
-const [formData, setFormData] = useState<FormData>({
-  username: '',
-  password: '',
-  confirmPassword: ''
-});
+
+  const navigate = useNavigate();
+      useEffect(() => {
+        document.title = "All IN ONE";
+      }, []);
+  const [formData, setFormData] = useState<FormData>({
+    username: '',
+    password: '',
+    confirmPassword: ''
+  });
+
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,7 +25,7 @@ const [formData, setFormData] = useState<FormData>({
       ...prev,
       [name]: value
     }));
-    
+
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
@@ -29,6 +36,7 @@ const [formData, setFormData] = useState<FormData>({
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
+
 
 
   if (!formData.username.trim()) {
@@ -56,13 +64,13 @@ const [formData, setFormData] = useState<FormData>({
     setIsSubmitting(true);
     try {
       const res = await fetch("http://localhost:8000/api/auth/login", {
-            method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        username: formData.username,   // backend expects `username`
-        password: formData.password
-      })
-    });
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          username: formData.username,   // backend expects `username`
+          password: formData.password
+        })
+      });
 
       if (!res.ok) {
         const err = await res.json();
@@ -71,7 +79,7 @@ const [formData, setFormData] = useState<FormData>({
 
       const data = await res.json();
       localStorage.setItem("access_token", data.access_token); // save token
-      alert("Signed in!");
+      navigate('/taskmanager', { replace: true });
     } catch (err: any) {
       setErrors({ general: err.message });
     } finally {
@@ -102,23 +110,23 @@ const [formData, setFormData] = useState<FormData>({
         <div className="form-container">
 
           {/* Email Field */}
-         <div className="form-field">
-    <input
-      type="email"
-      name="username"
-      placeholder="Email"
-      value={formData.username}
-      onChange={handleInputChange}
-      className={`form-input ${errors.username ? 'form-input-error' : 'form-input-normal'}`}
-      aria-invalid={errors.username ? 'true' : 'false'}
-      aria-describedby={errors.username ? 'username-error' : undefined}
-    />
-    {errors.username && (
-      <p id="username-error" className="error-text" role="alert">
-        {errors.username}
-      </p>
-    )}
-  </div>
+          <div className="form-field">
+            <input
+              type="email"
+              name="username"
+              placeholder="Email"
+              value={formData.username}
+              onChange={handleInputChange}
+              className={`form-input ${errors.username ? 'form-input-error' : 'form-input-normal'}`}
+              aria-invalid={errors.username ? 'true' : 'false'}
+              aria-describedby={errors.username ? 'username-error' : undefined}
+            />
+            {errors.username && (
+              <p id="username-error" className="error-text" role="alert">
+                {errors.username}
+              </p>
+            )}
+          </div>
 
           {/* Password Field */}
           <div className="form-field">

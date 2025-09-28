@@ -4,8 +4,15 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Task } from '../../types/Task';
 import TaskForm from './TaskForm';
 import TaskList from './TaskList';
+import '../../styles/Task.css';
+import LogoutButton from '../../components/auth/logoutbtn';
+
 
 const TaskManager: React.FC = () => {
+  useEffect(() => {
+    document.title = "Your task manager";
+  }, []);
+
   const [tasks, setTasks] = useState<Task[]>(() => {
     const savedTasks = localStorage.getItem('tasks');
     return savedTasks ? JSON.parse(savedTasks) : [];
@@ -44,7 +51,11 @@ const TaskManager: React.FC = () => {
 
   return (
     <div className="container">
-      <h1>Smart Task Manager</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1>Smart Task Manager</h1>
+        <LogoutButton />
+      </div>
+
       <TaskForm onAddTask={addTask} />
       <TaskList
         tasks={tasks}
