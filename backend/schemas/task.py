@@ -104,6 +104,7 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     assignee_ids: Optional[List[str]] = None
+    is_archived: Optional[bool] = None
 
     @field_validator('title')
     @classmethod
@@ -142,6 +143,7 @@ class SubtaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     assignee_ids: Optional[List[str]] = None
+    is_archived: Optional[bool] = None
 
     @field_validator('title')
     @classmethod

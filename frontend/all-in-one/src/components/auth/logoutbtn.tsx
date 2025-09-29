@@ -9,8 +9,8 @@ interface LogoutButtonProps {
   redirectTo?: string;
 }
 
-const logoutbtn: React.FC<LogoutButtonProps> = ({ 
-  onLogout, 
+const logoutbtn: React.FC<LogoutButtonProps> = ({
+  onLogout,
   className = '',
   showConfirm = false,
   redirectTo = '/'
@@ -22,7 +22,7 @@ const logoutbtn: React.FC<LogoutButtonProps> = ({
   useEffect(() => {
     document.title = "All IN ONE";
   }, []);
-    
+
   const handleLogout = async () => {
     if (showConfirm && !showConfirmDialog) {
       setShowConfirmDialog(true);
@@ -34,14 +34,14 @@ const logoutbtn: React.FC<LogoutButtonProps> = ({
 
     try {
       localStorage.removeItem('access_token');
-      
+
       if (onLogout) {
         await onLogout();
       }
 
       // Show logout message instead of alert
       setShowLogoutMessage(true);
-      
+
       // Redirect after showing message
       setTimeout(() => {
         window.location.href = redirectTo;
@@ -65,9 +65,9 @@ const logoutbtn: React.FC<LogoutButtonProps> = ({
         onClick={handleLogout}
         disabled={isLoggingOut}
         className={`
-          inline-flex items-center gap-2 px-4 py-2 
-          bg-blue-600 hover:bg-blue-700 
-          text-white font-medium rounded-lg 
+          inline-flex items-center gap-2 px-4 py-2
+          bg-blue-600 hover:bg-blue-700
+          text-white font-medium rounded-lg
           transition-colors duration-200
           disabled:opacity-50 disabled:cursor-not-allowed
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2

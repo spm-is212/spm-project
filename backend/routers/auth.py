@@ -52,33 +52,12 @@ def logout():
     return {"message": "Logged out (frontend should delete token)"}
 
 
-@router.get("/users/department")
-def get_users_by_current_user_department(user: dict = Depends(get_current_user)):
-    """Get list of users from current user's department for task assignment"""
+@router.get("/users")
+def get_all_users_for_assignment(user: dict = Depends(get_current_user)):
+    """Get list of all users for task assignment"""
     try:
-        user_id = user["sub"]
-
         user_manager = UserManager()
-        current_user_data = user_manager.get_current_user_data(user_id)
-        if not current_user_data:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        user_departments = current_user_data.get("departments")
-        if not user_departments:
-            raise HTTPException(status_code=400, detail="User has no departments assigned")
-
-        all_users = []
-        seen_user_ids = set()
-
-        for dept in user_departments:
-            dept_users = user_manager.get_users_by_department(dept)
-            for user in dept_users:
-                if user["id"] not in seen_user_ids:
-                    all_users.append(user)
-                    seen_user_ids.add(user["id"])
-
-        users = all_users
-
-        return {"users": users}
+        all_users = user_manager.get_all_users()
+        return {"users": all_users}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")

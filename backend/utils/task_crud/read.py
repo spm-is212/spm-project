@@ -50,8 +50,9 @@ class TaskReader:
         return self._get_tasks_for_regular_user(user_id, user_teams, user_departments)
 
     def _get_all_tasks(self) -> List[Dict[str, Any]]:
-        """Get all tasks in the system"""
-        return self.crud.select(self.table_name)
+        """Get all non-archived tasks in the system"""
+        all_tasks = self.crud.select(self.table_name)
+        return [task for task in all_tasks if not task.get("is_archived", False)]
 
     def _get_tasks_by_departments(self, departments: List[str]) -> List[Dict[str, Any]]:
         """Get all tasks from users in the specified departments"""
@@ -68,9 +69,9 @@ class TaskReader:
         if not department_user_ids:
             return []
 
-        # Get all tasks owned by users in these departments
+        # Get all non-archived tasks owned by users in these departments
         all_tasks = self.crud.select(self.table_name)
-        return [task for task in all_tasks if task["owner_user_id"] in department_user_ids]
+        return [task for task in all_tasks if task["owner_user_id"] in department_user_ids and not task.get("is_archived", False)]
 
     def _get_tasks_for_regular_user(self, user_id: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
         """Get tasks for regular users (own team + assigned tasks)"""
@@ -85,7 +86,7 @@ class TaskReader:
             for user in team_users:
                 team_user_ids.add(user["id"])
 
-        # Get all tasks
+        # Get all non-archived tasks
         all_tasks = self.crud.select(self.table_name)
 
         accessible_tasks = []
@@ -93,16 +94,17 @@ class TaskReader:
             # Can access if:
             # 1. Task is owned by someone in their team
             # 2. They are assigned to the task
+            # 3. Task is not archived
             if (task["owner_user_id"] in team_user_ids or
-                user_id in task.get("assignee_ids", [])):
+                user_id in task.get("assignee_ids", [])) and not task.get("is_archived", False):
                 accessible_tasks.append(task)
 
         return accessible_tasks
 
     def _get_assigned_tasks(self, user_id: str) -> List[Dict[str, Any]]:
-        """Get tasks assigned to the user"""
+        """Get non-archived tasks assigned to the user"""
         all_tasks = self.crud.select(self.table_name)
-        return [task for task in all_tasks if user_id in task.get("assignee_ids", [])]
+        return [task for task in all_tasks if user_id in task.get("assignee_ids", []) and not task.get("is_archived", False)]
 
     def _is_privileged_team(self, user_teams: List[str]) -> bool:
         """Check if user is in any privileged teams"""
@@ -129,3 +131,101 @@ class TaskReader:
                 return task
 
         return None
+
+    def get_archived_subtasks_for_user(self, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+        """
+        Get archived subtasks with their main tasks based on user access control rules
+
+        Returns:
+            List of archived subtasks with their associated main tasks
+        """
+        # First get all accessible tasks (including archived ones)
+        accessible_tasks = self._get_all_accessible_tasks(user_id, user_role, user_teams, user_departments)
+
+        # Filter for archived subtasks and include their main tasks
+        result = []
+        main_task_cache = {}
+
+        for task in accessible_tasks:
+            # If it's an archived subtask (has parent_id and is_archived=True)
+            if task.get("parent_id") is not None and task.get("is_archived", False):
+                # Find the main task
+                main_task_id = task["parent_id"]
+                if main_task_id not in main_task_cache:
+                    main_task = next((t for t in accessible_tasks if t["id"] == main_task_id), None)
+                    main_task_cache[main_task_id] = main_task
+
+                result.append({
+                    "subtask": task,
+                    "main_task": main_task_cache[main_task_id]
+                })
+
+        return result
+
+    def _get_all_accessible_tasks(self, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+        """Get all accessible tasks including archived ones (for internal use)"""
+        # Managing Director: Can view ALL tasks
+        if user_role == "managing_director":
+            return self.crud.select(self.table_name)
+
+        # Director: Can view all tasks in same department
+        if user_role == "director":
+            return self._get_all_tasks_by_departments(user_departments)
+
+        # Check if user is in privileged teams
+        if self._is_privileged_team(user_teams):
+            return self._get_all_tasks_by_departments(user_departments)
+
+        # Regular staff: Own team tasks OR assigned tasks
+        return self._get_all_tasks_for_regular_user(user_id, user_teams, user_departments)
+
+    def _get_all_tasks_by_departments(self, departments: List[str]) -> List[Dict[str, Any]]:
+        """Get all tasks (including archived) from users in the specified departments"""
+        if not departments:
+            return []
+
+        # Get all users from these departments
+        department_user_ids = set()
+        for dept in departments:
+            dept_users = self.user_manager.get_users_by_department(dept)
+            for user in dept_users:
+                department_user_ids.add(user["id"])
+
+        if not department_user_ids:
+            return []
+
+        # Get all tasks owned by users in these departments (including archived)
+        all_tasks = self.crud.select(self.table_name)
+        return [task for task in all_tasks if task["owner_user_id"] in department_user_ids]
+
+    def _get_all_tasks_for_regular_user(self, user_id: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+        """Get all tasks (including archived) for regular users (own team + assigned tasks)"""
+        if not user_teams:
+            # If no teams, only get assigned tasks
+            return self._get_all_assigned_tasks(user_id)
+
+        # Get users from same teams
+        team_user_ids = set()
+        for team in user_teams:
+            team_users = self.user_manager.get_users_by_team(team)
+            for user in team_users:
+                team_user_ids.add(user["id"])
+
+        # Get all tasks (including archived)
+        all_tasks = self.crud.select(self.table_name)
+
+        accessible_tasks = []
+        for task in all_tasks:
+            # Can access if:
+            # 1. Task is owned by someone in their team
+            # 2. They are assigned to the task
+            if (task["owner_user_id"] in team_user_ids or
+                user_id in task.get("assignee_ids", [])):
+                accessible_tasks.append(task)
+
+        return accessible_tasks
+
+    def _get_all_assigned_tasks(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get all tasks (including archived) assigned to the user"""
+        all_tasks = self.crud.select(self.table_name)
+        return [task for task in all_tasks if user_id in task.get("assignee_ids", [])]

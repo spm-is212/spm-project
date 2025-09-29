@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Calendar, User, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, FolderOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
 
@@ -9,13 +10,26 @@ const TaskManager = () => {
   const [error, setError] = useState('');
   const [editingTask, setEditingTask] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const navigate = useNavigate();
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    status: 'pending',
-    priority: 'medium',
+    status: 'TO_DO',
+    priority: 'MEDIUM',
     due_date: '',
-    assigned_to: ''
+    comments: ''
+  });
+  const [subtasks, setSubtasks] = useState([]);
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
+  const [newSubtask, setNewSubtask] = useState({
+    title: '',
+    description: '',
+    priority: 'MEDIUM',
+    due_date: '',
+    comments: ''
   });
 
 // fetch tasks
@@ -46,6 +60,42 @@ function getUserIdFromToken(): string | null {
   }
 }
 
+// fetch users from current user's department
+const fetchUsers = async () => {
+  try {
+    const data = await apiFetch("auth/users");
+    setUsers(data.users);
+
+    // Set current user as default assignee
+    const userId = getUserIdFromToken();
+    if (userId) {
+      setCurrentUserId(userId);
+      const currentUser = data.users.find(user => user.id === userId);
+      if (currentUser) {
+        setSelectedAssignees([userId]);
+      }
+    }
+  } catch (err: any) {
+    console.error(`Failed to fetch users: ${err.message}`);
+    setError(`Failed to fetch team members: ${err.message}`);
+
+    // Fallback: just set current user as available
+    const userId = getUserIdFromToken();
+    if (userId) {
+      setCurrentUserId(userId);
+      setSelectedAssignees([userId]);
+      // Create a minimal user object for current user
+      setUsers([{
+        id: userId,
+        email: 'current.user@company.com',
+        username: 'current.user',
+        role: 'staff',
+        departments: []
+      }]);
+    }
+  }
+};
+
 
 const createTask = async (taskData: any) => {
   setLoading(true);
@@ -53,15 +103,27 @@ const createTask = async (taskData: any) => {
   try {
     const userId = getUserIdFromToken();
 
+    // Prepare subtasks for backend format
+    const formattedSubtasks = subtasks.map(subtask => ({
+      title: subtask.title,
+      description: subtask.description,
+      due_date: subtask.due_date,
+      priority: subtask.priority,
+      assignee_ids: userId ? [userId] : []
+    }));
+
     const payload = {
       main_task: {
         title: taskData.title,
         description: taskData.description,
         due_date: taskData.due_date,
-        priority: taskData.priority.toUpperCase(),
-        assignee_ids: userId ? [userId] : []   // auto-assign logged-in user
+        priority: taskData.priority,
+        assignee_ids: selectedAssignees.length > 0 ? selectedAssignees : (userId ? [userId] : []),
+        owner_user_id: userId,
+        comments: taskData.comments ? [{ text: taskData.comments, author: userId, timestamp: new Date().toISOString() }] : [],
+        attachments: []
       },
-      subtasks: []
+      subtasks: formattedSubtasks
     };
 
     await apiFetch("tasks/createTask", {
@@ -71,7 +133,13 @@ const createTask = async (taskData: any) => {
 
     await fetchTasks();
     setShowAddForm(false);
-    setNewTask({ title: "", description: "", status: "pending", priority: "medium", due_date: "", assigned_to: "" });
+    setNewTask({ title: "", description: "", status: "TO_DO", priority: "MEDIUM", due_date: "", comments: "" });
+    setSubtasks([]);
+    setShowSubtaskForm(false);
+
+    // Reset assignees to current user only
+    const currentUser = getUserIdFromToken();
+    setSelectedAssignees(currentUser ? [currentUser] : []);
   } catch (err: any) {
     setError(`Failed to create task: ${err.message}`);
   } finally {
@@ -92,8 +160,9 @@ const updateTask = async (taskId: string, taskData: any) => {
         title: taskData.title,
         description: taskData.description,
         due_date: taskData.due_date,
-        priority: taskData.priority.toUpperCase(),
-        assignee_ids: userId ? [userId] : []
+        priority: taskData.priority,
+        assignee_ids: userId ? [userId] : [],
+        ...(taskData.is_archived !== undefined && { is_archived: taskData.is_archived })
       },
       subtasks: {}
     };
@@ -113,26 +182,55 @@ const updateTask = async (taskId: string, taskData: any) => {
 };
 
 
-// delete task
-const deleteTask = async (taskId: string) => {
-  if (!window.confirm("Are you sure you want to delete this task?")) return;
+// archive/unarchive task
+const archiveTask = async (taskId: string, isArchived: boolean) => {
+
   setLoading(true);
   setError("");
   try {
-    await apiFetch(`/tasks/deleteTask/${taskId}`, { method: "DELETE" }); // <-- use apiFetch
-    setTasks(tasks.filter((task) => task.id !== taskId));
+    const payload = {
+      main_task_id: taskId,
+      main_task: {
+        is_archived: isArchived
+      },
+      subtasks: {}
+    };
+
+    await apiFetch("tasks/updateTask", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+
+    await fetchTasks(); // Refresh the task list
   } catch (err: any) {
-    setError(`Failed to delete task: ${err.message}`);
+    setError(`Failed to ${action} task: ${err.message}`);
   } finally {
     setLoading(false);
   }
 };
 
-  // Load tasks on component mount
+
+  // Load tasks and users on component mount
   useEffect(() => {
     document.title = "Your task manager";
     fetchTasks();
+    fetchUsers();
   }, []);
+
+  // Subtask management functions
+  const addSubtask = () => {
+    if (!newSubtask.title.trim()) {
+      setError('Subtask title is required');
+      return;
+    }
+    setSubtasks([...subtasks, { ...newSubtask, id: Date.now().toString() }]);
+    setNewSubtask({ title: '', description: '', priority: 'MEDIUM', due_date: '', comments: '' });
+    setShowSubtaskForm(false);
+  };
+
+  const removeSubtask = (index: number) => {
+    setSubtasks(subtasks.filter((_, i) => i !== index));
+  };
 
   // Handle form submissions
   const handleCreateSubmit = () => {
@@ -153,20 +251,21 @@ const deleteTask = async (taskId: string) => {
 
   // Get priority color
   const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'text-red-600 bg-red-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'low': return 'text-green-600 bg-green-100';
+    switch (priority?.toUpperCase()) {
+      case 'HIGH': return 'text-red-600 bg-red-100';
+      case 'MEDIUM': return 'text-yellow-600 bg-yellow-100';
+      case 'LOW': return 'text-green-600 bg-green-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
 
   // Get status color
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'text-green-600 bg-green-100';
-      case 'in_progress': return 'text-blue-600 bg-blue-100';
-      case 'pending': return 'text-gray-600 bg-gray-100';
+    switch (status?.toUpperCase()) {
+      case 'COMPLETED': return 'text-green-600 bg-green-100';
+      case 'IN_PROGRESS': return 'text-blue-600 bg-blue-100';
+      case 'TO_DO': return 'text-gray-600 bg-gray-100';
+      case 'BLOCKED': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
@@ -186,7 +285,7 @@ const deleteTask = async (taskId: string) => {
         <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg flex items-center">
           <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
           <span className="text-red-700">{error}</span>
-          <button 
+          <button
             onClick={() => setError('')}
             className="ml-auto text-red-600 hover:text-red-800"
           >
@@ -195,8 +294,8 @@ const deleteTask = async (taskId: string) => {
         </div>
       )}
 
-      {/* Add Task Button */}
-      <div className="mb-6">
+      {/* Action Buttons */}
+      <div className="mb-6 flex space-x-4">
         <button
           onClick={() => setShowAddForm(true)}
           disabled={loading}
@@ -204,6 +303,13 @@ const deleteTask = async (taskId: string) => {
         >
           <Plus className="w-4 h-4 mr-2" />
           Add New Task
+        </button>
+        <button
+          onClick={() => navigate('/archived-tasks')}
+          className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center"
+        >
+          <FolderOpen className="w-4 h-4 mr-2" />
+          View Archived Tasks
         </button>
       </div>
 
@@ -231,9 +337,10 @@ const deleteTask = async (taskId: string) => {
                   onChange={(e) => setNewTask({...newTask, status: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
+                  <option value="TO_DO">To Do</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="BLOCKED">Blocked</option>
                 </select>
               </div>
               <div>
@@ -243,9 +350,9 @@ const deleteTask = async (taskId: string) => {
                   onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
                 </select>
               </div>
               <div>
@@ -259,13 +366,60 @@ const deleteTask = async (taskId: string) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
-                <input
-                  type="text"
-                  value={newTask.assigned_to}
-                  onChange={(e) => setNewTask({...newTask, assigned_to: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter assignee name"
-                />
+                <div className="relative">
+                  <div className="w-full min-h-[40px] p-2 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white">
+                    {/* Selected Users */}
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedAssignees.map(userId => {
+                        const user = users.find(u => u.id === userId);
+                        const isCurrentUser = userId === currentUserId;
+                        return (
+                          <span
+                            key={userId}
+                            className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${
+                              isCurrentUser
+                                ? 'bg-blue-100 text-blue-800 opacity-75'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {user?.username || user?.email?.split('@')[0] || 'Unknown'}
+                            {isCurrentUser && ' (You)'}
+                            {!isCurrentUser && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAssignees(prev => prev.filter(id => id !== userId))}
+                                className="ml-1 text-gray-500 hover:text-gray-700"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Dropdown */}
+                    <select
+                      onChange={(e) => {
+                        const userId = e.target.value;
+                        if (userId && !selectedAssignees.includes(userId)) {
+                          setSelectedAssignees(prev => [...prev, userId]);
+                        }
+                        e.target.value = ''; // Reset selection
+                      }}
+                      className="w-full text-sm bg-transparent border-none focus:outline-none"
+                    >
+                      <option value="">Add team member...</option>
+                      {users
+                        .filter(user => !selectedAssignees.includes(user.id))
+                        .map(user => (
+                          <option key={user.id} value={user.id}>
+                            {user.username || user.email?.split('@')[0]} ({user.email})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
             <div>
@@ -278,6 +432,135 @@ const deleteTask = async (taskId: string) => {
                 placeholder="Enter task description"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+              <textarea
+                value={newTask.comments}
+                onChange={(e) => setNewTask({...newTask, comments: e.target.value})}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows="2"
+                placeholder="Enter initial comments (optional)"
+              />
+            </div>
+
+            {/* Subtasks Section */}
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-md font-semibold text-gray-800">Subtasks ({subtasks.length})</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowSubtaskForm(!showSubtaskForm)}
+                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 flex items-center"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Subtask
+                </button>
+              </div>
+
+              {/* Existing Subtasks */}
+              {subtasks.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {subtasks.map((subtask, index) => (
+                    <div key={index} className="bg-gray-50 p-3 rounded border flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{subtask.title}</div>
+                        {subtask.description && <div className="text-xs text-gray-600 mt-1">{subtask.description}</div>}
+                        <div className="flex space-x-2 mt-1">
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{subtask.priority}</span>
+                          {subtask.due_date && <span className="text-xs text-gray-500">{subtask.due_date}</span>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSubtask(index)}
+                        className="text-red-500 hover:text-red-700 ml-2"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Subtask Form */}
+              {showSubtaskForm && (
+                <div className="bg-blue-50 p-4 rounded border space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Subtask Title</label>
+                      <input
+                        type="text"
+                        value={newSubtask.title}
+                        onChange={(e) => setNewSubtask({...newSubtask, title: e.target.value})}
+                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter subtask title"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                      <select
+                        value={newSubtask.priority}
+                        onChange={(e) => setNewSubtask({...newSubtask, priority: e.target.value})}
+                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                      <input
+                        type="date"
+                        value={newSubtask.due_date}
+                        onChange={(e) => setNewSubtask({...newSubtask, due_date: e.target.value})}
+                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={newSubtask.description}
+                      onChange={(e) => setNewSubtask({...newSubtask, description: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows="2"
+                      placeholder="Enter subtask description"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+                    <textarea
+                      value={newSubtask.comments}
+                      onChange={(e) => setNewSubtask({...newSubtask, comments: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows="2"
+                      placeholder="Enter initial comments (optional)"
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={addSubtask}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center"
+                    >
+                      <Save className="w-3 h-3 mr-1" />
+                      Add Subtask
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSubtaskForm(false)}
+                      className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex space-x-2">
               <button
                 type="button"
@@ -290,7 +573,11 @@ const deleteTask = async (taskId: string) => {
               </button>
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false);
+                  setSubtasks([]);
+                  setShowSubtaskForm(false);
+                }}
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center"
               >
                 <X className="w-4 h-4 mr-2" />
@@ -396,41 +683,82 @@ const deleteTask = async (taskId: string) => {
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => deleteTask(task.id)}
-                      className="text-red-600 hover:text-red-800 p-1"
-                      title="Delete task"
+                      onClick={() => archiveTask(task.id, !task.is_archived)}
+                      className={`p-1 ${task.is_archived ? 'text-green-600 hover:text-green-800' : 'text-orange-600 hover:text-orange-800'}`}
+                      title={task.is_archived ? "Unarchive task" : "Archive task"}
                       disabled={loading}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {task.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-                
+
                 {task.description && (
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{task.description}</p>
                 )}
-                
+
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                      {task.status?.replace('_', ' ').toUpperCase()}
-                    </span>
+                    <div className="flex space-x-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                        {task.status?.replace('_', ' ').toUpperCase()}
+                      </span>
+                      {task.is_archived && (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium text-gray-600 bg-gray-200">
+                          ARCHIVED
+                        </span>
+                      )}
+                    </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
                       {task.priority?.toUpperCase()}
                     </span>
                   </div>
-                  
+
                   {task.due_date && (
                     <div className="flex items-center text-sm text-gray-600">
                       <Calendar className="w-4 h-4 mr-1" />
                       {new Date(task.due_date).toLocaleDateString()}
                     </div>
                   )}
-                  
+
                   {task.assigned_to && (
                     <div className="flex items-center text-sm text-gray-600">
                       <User className="w-4 h-4 mr-1" />
                       {task.assigned_to}
+                    </div>
+                  )}
+
+                  {/* Subtasks Display */}
+                  {task.subtasks && task.subtasks.length > 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="text-xs font-medium text-gray-700 mb-2">
+                        Subtasks ({task.subtasks.length})
+                      </div>
+                      <div className="space-y-1">
+                        {task.subtasks.slice(0, 3).map((subtask, index) => (
+                          <div key={index} className="bg-gray-50 p-2 rounded text-xs">
+                            <div className="flex justify-between items-start">
+                              <span className="font-medium text-gray-800 flex-1 pr-2">{subtask.title}</span>
+                              <div className="flex space-x-1">
+                                <span className={`px-1 py-0.5 rounded text-xs ${getPriorityColor(subtask.priority)}`}>
+                                  {subtask.priority?.charAt(0)}
+                                </span>
+                                {subtask.is_archived && (
+                                  <span className="px-1 py-0.5 rounded text-xs bg-gray-300 text-gray-600">A</span>
+                                )}
+                              </div>
+                            </div>
+                            {subtask.description && (
+                              <div className="text-gray-600 mt-1 line-clamp-1">{subtask.description}</div>
+                            )}
+                          </div>
+                        ))}
+                        {task.subtasks.length > 3 && (
+                          <div className="text-xs text-gray-500 italic">
+                            +{task.subtasks.length - 3} more subtasks
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
