@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, FolderOpen } from 'lucide-react';
+import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, FolderOpen, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
@@ -809,7 +809,7 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
           </button>
         </div>
       )}
-    </div>    
+    </div>
     </div>
   );
 };
