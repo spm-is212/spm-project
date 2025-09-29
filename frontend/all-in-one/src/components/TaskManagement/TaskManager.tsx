@@ -47,7 +47,26 @@ const fetchTasks = useCallback(async () => {
   setError("");
   try {
     const data = await apiFetch("tasks/readTasks");  // <-- use apiFetch
-    setTasks(data.tasks);
+
+    // Organize tasks: separate main tasks and subtasks
+    const allTasks = data.tasks;
+    const mainTasks = allTasks.filter(task => task.parent_id === null);
+    const subtasksByParent = allTasks.filter(task => task.parent_id !== null)
+      .reduce((acc, subtask) => {
+        if (!acc[subtask.parent_id]) {
+          acc[subtask.parent_id] = [];
+        }
+        acc[subtask.parent_id].push(subtask);
+        return acc;
+      }, {});
+
+    // Attach subtasks to their main tasks
+    const organizedTasks = mainTasks.map(mainTask => ({
+      ...mainTask,
+      subtasks: subtasksByParent[mainTask.id] || []
+    }));
+
+    setTasks(organizedTasks);
   } catch (err: unknown) {
     setError(`Failed to fetch tasks: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
