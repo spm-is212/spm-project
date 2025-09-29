@@ -48,6 +48,8 @@ class TaskCreate(BaseModel):
     @classmethod
     def assignee_ids_not_empty(cls, v):
         # Allow empty assignee list - creator will be auto-assigned in TaskCreator
+        if v is not None and len(v) > 5:
+            raise ValueError('Maximum of 5 assignees allowed per task')
         return v
 
     @field_validator('due_date')
@@ -86,6 +88,8 @@ class SubtaskCreate(BaseModel):
     @classmethod
     def assignee_ids_not_empty_if_provided(cls, v):
         # Allow empty assignee list - creator will be auto-assigned in TaskCreator
+        if v is not None and len(v) > 5:
+            raise ValueError('Maximum of 5 assignees allowed per subtask')
         return v
 
     @field_validator('due_date')
@@ -124,6 +128,8 @@ class TaskUpdate(BaseModel):
     @classmethod
     def assignee_ids_not_empty_if_provided(cls, v):
         # Allow empty list for testing assignee removal
+        if v is not None and len(v) > 5:
+            raise ValueError('Maximum of 5 assignees allowed per task')
         return v
 
     @field_validator('due_date')
@@ -164,6 +170,8 @@ class SubtaskUpdate(BaseModel):
     def assignee_ids_not_empty_if_provided(cls, v):
         if v is not None and len(v) == 0:
             raise ValueError('Assignee IDs list cannot be empty if provided')
+        if v is not None and len(v) > 5:
+            raise ValueError('Maximum of 5 assignees allowed per subtask')
         return v
 
     @field_validator('due_date')

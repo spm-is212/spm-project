@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, FolderOpen, Shield } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield } from 'lucide-react';
 import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
+import type { Task, NewTask, NewSubtask, User as UserType, TaskPriority } from '../../types/Task';
 
 
 const TaskManager = () => {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [editingTask, setEditingTask] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [selectedAssignees, setSelectedAssignees] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const navigate = useNavigate();
-  const [newTask, setNewTask] = useState({
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [newTask, setNewTask] = useState<NewTask>({
     title: '',
     description: '',
     status: 'TO_DO',
@@ -24,16 +23,16 @@ const TaskManager = () => {
     due_date: '',
     comments: ''
   });
-  const [subtasks, setSubtasks] = useState([]);
-  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
-  const [newSubtask, setNewSubtask] = useState({
+  const [subtasks, setSubtasks] = useState<NewSubtask[]>([]);
+  const [showSubtaskForm, setShowSubtaskForm] = useState<boolean>(false);
+  const [newSubtask, setNewSubtask] = useState<NewSubtask>({
     title: '',
     description: '',
     priority: 'MEDIUM',
     due_date: '',
     comments: ''
   });
-  const [userInfo, setUserInfo] = useState<{ email: string; role: string } | null>(null);
+  const [userInfo, setUserInfo] = useState<{ email: string; role: string; department?: string } | null>(null);
 
   useEffect(() => {
     const user = getUserFromToken();
@@ -43,18 +42,18 @@ const TaskManager = () => {
 
 
 // fetch tasks
-const fetchTasks = async () => {
+const fetchTasks = useCallback(async () => {
   setLoading(true);
   setError("");
   try {
     const data = await apiFetch("tasks/readTasks");  // <-- use apiFetch
     setTasks(data.tasks);
-  } catch (err: any) {
-    setError(`Failed to fetch tasks: ${err.message}`);
+  } catch (err: unknown) {
+    setError(`Failed to fetch tasks: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setLoading(false);
   }
-};
+}, []);
 
 function getUserIdFromToken(): string | null {
   const token = localStorage.getItem("access_token");
@@ -71,7 +70,7 @@ function getUserIdFromToken(): string | null {
 }
 
 // fetch users from current user's department
-const fetchUsers = async () => {
+const fetchUsers = useCallback(async () => {
   try {
     const data = await apiFetch("auth/users");
     setUsers(data.users);
@@ -85,9 +84,9 @@ const fetchUsers = async () => {
         setSelectedAssignees([userId]);
       }
     }
-  } catch (err: any) {
-    console.error(`Failed to fetch users: ${err.message}`);
-    setError(`Failed to fetch team members: ${err.message}`);
+  } catch (err: unknown) {
+    console.error(`Failed to fetch users: ${err instanceof Error ? err.message : String(err)}`);
+    setError(`Failed to fetch team members: ${err instanceof Error ? err.message : String(err)}`);
 
     // Fallback: just set current user as available
     const userId = getUserIdFromToken();
@@ -104,10 +103,10 @@ const fetchUsers = async () => {
       }]);
     }
   }
-};
+}, []);
 
 
-const createTask = async (taskData: any) => {
+const createTask = async (taskData: NewTask): Promise<void> => {
   setLoading(true);
   setError("");
   try {
@@ -122,16 +121,15 @@ const createTask = async (taskData: any) => {
       assignee_ids: userId ? [userId] : []
     }));
 
+    const mainTaskAssignees = selectedAssignees.length > 0 ? selectedAssignees : (userId ? [userId] : []);
+
     const payload = {
       main_task: {
         title: taskData.title,
         description: taskData.description,
         due_date: taskData.due_date,
         priority: taskData.priority,
-        assignee_ids: selectedAssignees.length > 0 ? selectedAssignees : (userId ? [userId] : []),
-        owner_user_id: userId,
-        comments: taskData.comments ? [{ text: taskData.comments, author: userId, timestamp: new Date().toISOString() }] : [],
-        attachments: []
+        assignee_ids: mainTaskAssignees
       },
       subtasks: formattedSubtasks
     };
@@ -150,19 +148,22 @@ const createTask = async (taskData: any) => {
     // Reset assignees to current user only
     const currentUser = getUserIdFromToken();
     setSelectedAssignees(currentUser ? [currentUser] : []);
-  } catch (err: any) {
-    setError(`Failed to create task: ${err.message}`);
+  } catch (err: unknown) {
+    setError(`Failed to create task: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setLoading(false);
   }
 };
 
 
-const updateTask = async (taskId: string, taskData: any) => {
+const updateTask = async (taskId: string, taskData: Partial<Task>): Promise<void> => {
   setLoading(true);
   setError("");
   try {
     const userId = getUserIdFromToken();
+
+    // Use selectedAssignees for updates, fallback to current user if none selected
+    const assigneeIds = selectedAssignees.length > 0 ? selectedAssignees : (userId ? [userId] : []);
 
     const payload = {
       main_task_id: taskId,
@@ -171,7 +172,7 @@ const updateTask = async (taskId: string, taskData: any) => {
         description: taskData.description,
         due_date: taskData.due_date,
         priority: taskData.priority,
-        assignee_ids: userId ? [userId] : [],
+        assignee_ids: assigneeIds,
         ...(taskData.is_archived !== undefined && { is_archived: taskData.is_archived })
       },
       subtasks: {}
@@ -184,8 +185,8 @@ const updateTask = async (taskId: string, taskData: any) => {
 
     await fetchTasks();
     setEditingTask(null);
-  } catch (err: any) {
-    setError(`Failed to update task: ${err.message}`);
+  } catch (err: unknown) {
+    setError(`Failed to update task: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setLoading(false);
   }
@@ -193,7 +194,7 @@ const updateTask = async (taskId: string, taskData: any) => {
 
 
 // archive/unarchive task
-const archiveTask = async (taskId: string, isArchived: boolean) => {
+const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> => {
 
   setLoading(true);
   setError("");
@@ -212,8 +213,8 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
     });
 
     await fetchTasks(); // Refresh the task list
-  } catch (err: any) {
-    setError(`Failed to ${action} task: ${err.message}`);
+  } catch (err: unknown) {
+    setError(`Failed to archive/unarchive task: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setLoading(false);
   }
@@ -225,7 +226,7 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
     document.title = "Your task manager";
     fetchTasks();
     fetchUsers();
-  }, []);
+  }, [fetchTasks, fetchUsers]);
 
   // Subtask management functions
   const addSubtask = () => {
@@ -260,7 +261,7 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
   };
 
   // Get priority color
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: TaskPriority | undefined): string => {
     switch (priority?.toUpperCase()) {
       case 'HIGH': return 'text-red-600 bg-red-100';
       case 'MEDIUM': return 'text-yellow-600 bg-yellow-100';
@@ -270,7 +271,7 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
   };
 
   // Get status color
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string | undefined): string => {
     switch (status?.toUpperCase()) {
       case 'COMPLETED': return 'text-green-600 bg-green-100';
       case 'IN_PROGRESS': return 'text-blue-600 bg-blue-100';
@@ -329,13 +330,6 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
           <Plus className="w-4 h-4 mr-2" />
           Add New Task
         </button>
-        <button
-          onClick={() => navigate('/archived-tasks')}
-          className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center"
-        >
-          <FolderOpen className="w-4 h-4 mr-2" />
-          View Archived Tasks
-        </button>
       </div>
 
       {/* Add Task Form */}
@@ -385,7 +379,15 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
                 <input
                   type="date"
                   value={newTask.due_date}
-                  onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const today = new Date().toISOString().split('T')[0];
+                    if (selectedDate && selectedDate < today) {
+                      setError('Due date cannot be in the past');
+                      return;
+                    }
+                    setNewTask({...newTask, due_date: selectedDate});
+                  }}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -428,6 +430,11 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
                       onChange={(e) => {
                         const userId = e.target.value;
                         if (userId && !selectedAssignees.includes(userId)) {
+                          if (selectedAssignees.length >= 5) {
+                            setError('Maximum of 5 assignees allowed per task');
+                            e.target.value = ''; // Reset selection
+                            return;
+                          }
                           setSelectedAssignees(prev => [...prev, userId]);
                         }
                         e.target.value = ''; // Reset selection
@@ -539,7 +546,15 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
                       <input
                         type="date"
                         value={newSubtask.due_date}
-                        onChange={(e) => setNewSubtask({...newSubtask, due_date: e.target.value})}
+                        onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          if (selectedDate && selectedDate < today) {
+                            setError('Due date cannot be in the past');
+                            return;
+                          }
+                          setNewSubtask({...newSubtask, due_date: selectedDate});
+                        }}
                         className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -664,7 +679,15 @@ const archiveTask = async (taskId: string, isArchived: boolean) => {
                 <input
                   type="date"
                   value={editingTask.due_date}
-                  onChange={(e) => setEditingTask({...editingTask, due_date: e.target.value})}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const today = new Date().toISOString().split('T')[0];
+                    if (selectedDate && selectedDate < today) {
+                      setError('Due date cannot be in the past');
+                      return;
+                    }
+                    setEditingTask({...editingTask, due_date: selectedDate});
+                  }}
                   className="w-full p-1 border border-gray-300 rounded text-xs"
                 />
                 <input
