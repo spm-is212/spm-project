@@ -89,6 +89,36 @@ function getUserIdFromToken(): string | null {
   }
 }
 
+function validateTask(task: NewTask, assignees: string[], currentUserId: string | null): string | null {
+  if (!task.title.trim()) return "Task title is required";
+  if (!task.description.trim()) return "Task description is required";
+
+  const allowedStatuses = ["TO_DO", "IN_PROGRESS", "COMPLETED", "BLOCKED"];
+  if (!allowedStatuses.includes(task.status.toUpperCase())) {
+    return "Invalid status value";
+  }
+
+  const allowedPriorities = ["LOW", "MEDIUM", "HIGH"];
+  if (!allowedPriorities.includes(task.priority.toUpperCase())) {
+    return "Invalid priority value";
+  }
+
+  if (task.due_date) {
+    const today = new Date().toISOString().split("T")[0];
+    if (task.due_date < today) return "Due date cannot be in the past";
+  }
+
+  if (assignees.length === 0 && !currentUserId) {
+    return "At least one assignee is required";
+  }
+
+  if (!currentUserId) {
+    return "Could not determine owner user ID from token";
+  }
+
+  return null; 
+}
+
 // fetch users from current user's department
 const fetchUsers = useCallback(async () => {
   try {
@@ -331,12 +361,17 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
 
   // Handle form submissions
   const handleCreateSubmit = () => {
-    if (!newTask.title.trim()) {
-      setError('Task title is required');
+    const userId = getUserIdFromToken();
+
+    const errorMsg = validateTask(newTask, selectedAssignees, userId);
+    if (errorMsg) {
+      setError(errorMsg);
       return;
     }
+
     createTask(newTask);
   };
+
 
   const handleUpdateSubmit = () => {
     if (!editingTask.title.trim()) {
