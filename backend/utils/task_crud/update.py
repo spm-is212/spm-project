@@ -26,6 +26,39 @@ class TaskUpdater:
         privileged_teams = ["sales manager", "finance managers"]
         return any(team in privileged_teams for team in user_teams)
 
+    def _validate_main_task_archival(self, main_task_id: str, is_archived: bool) -> bool:
+        """
+        Validate if a main task can be archived based on subtask status
+
+        Rules:
+        - Main task can only be archived if ALL subtasks are archived OR it's a standalone task
+        - Main task can be unarchived anytime
+
+        Args:
+            main_task_id: ID of the main task
+            is_archived: Whether we're trying to archive (True) or unarchive (False)
+
+        Returns:
+            True if operation is allowed, False otherwise
+        """
+        if not is_archived:
+            # Unarchiving is always allowed
+            return True
+
+        # Check if main task has subtasks
+        subtasks = self.crud.select(self.table_name, filters={"parent_id": main_task_id})
+
+        if not subtasks:
+            # No subtasks, can archive immediately
+            return True
+
+        # Check if all subtasks are archived
+        for subtask in subtasks:
+            if not subtask.get("is_archived", False):
+                return False
+
+        return True
+
     def update_tasks(self, main_task_id: str, user_role: str, user_teams: list, main_task: Optional[TaskUpdate] = None, subtasks: Optional[Dict[str, TaskUpdate]] = None) -> Dict[str, Any]:
         """
         Update main task and/or subtasks
@@ -46,6 +79,11 @@ class TaskUpdater:
         }
 
         if main_task:
+            # Validate archival rules for main tasks
+            if main_task.is_archived is not None:
+                if not self._validate_main_task_archival(main_task_id, main_task.is_archived):
+                    raise ValueError("Cannot archive main task: all subtasks must be archived first")
+
             main_task_dict = {}
 
             if main_task.title:
@@ -69,6 +107,8 @@ class TaskUpdater:
                             main_task_dict["assignee_ids"] = main_task.assignee_ids
                     else:
                         main_task_dict["assignee_ids"] = main_task.assignee_ids
+            if main_task.is_archived is not None:
+                main_task_dict["is_archived"] = main_task.is_archived
 
             if main_task_dict:
                 main_task_dict["parent_id"] = MAIN_TASK_PARENT_ID
@@ -105,6 +145,9 @@ class TaskUpdater:
                                 subtask_dict["assignee_ids"] = subtask_data.assignee_ids
                         else:
                             subtask_dict["assignee_ids"] = subtask_data.assignee_ids
+
+                if subtask_data.is_archived is not None:
+                    subtask_dict["is_archived"] = subtask_data.is_archived
 
                 if subtask_dict:
                     results = self.crud.update(

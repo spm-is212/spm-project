@@ -41,6 +41,8 @@ def update_task_endpoint(request: TaskUpdateRequest, user: dict = Depends(get_cu
         )
 
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
@@ -63,5 +65,27 @@ def read_tasks_endpoint(user: dict = Depends(get_current_user)):
         )
 
         return {"tasks": tasks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/readArchivedTasks")
+def read_archived_tasks_endpoint(user: dict = Depends(get_current_user)):
+    """Read archived subtasks with their main tasks based on user access control rules"""
+    try:
+        user_id = user["sub"]
+        user_role = user["role"]
+        user_teams = user.get("teams", [])
+        user_departments = user.get("departments", [])
+
+        task_reader = TaskReader()
+        archived_subtasks = task_reader.get_archived_subtasks_for_user(
+            user_id=user_id,
+            user_role=user_role,
+            user_teams=user_teams,
+            user_departments=user_departments
+        )
+
+        return {"archived_subtasks": archived_subtasks}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
