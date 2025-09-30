@@ -16,13 +16,13 @@ function TaskList({ tasks, onUpdateTask, onDeleteTask }) {
                 <span className="task-status">Status: {task.status}</span>
               </div>
               <div className="task-actions">
-                <button 
+                <button
                   onClick={() => onUpdateTask(task.id, { status: task.status === 'To Do' ? 'In Progress' : 'To Do' })}
                   className="action-button update-button"
                 >
                   Toggle Status
                 </button>
-                <button 
+                <button
                   onClick={() => onDeleteTask(task.id)}
                   className="action-button delete-button"
                 >
@@ -38,5 +38,3 @@ function TaskList({ tasks, onUpdateTask, onDeleteTask }) {
 }
 
 export default TaskList;
-
-

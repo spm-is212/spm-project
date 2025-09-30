@@ -13,7 +13,7 @@ function App() {
   };
 
   const handleUpdateTask = (id, updatedFields) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === id ? { ...task, ...updatedFields } : task
     ));
   };
@@ -27,10 +27,10 @@ function App() {
       <h1>Smart Task Manager</h1>
       <div className="main-content">
         <TaskForm onAddTask={handleAddTask} />
-        <TaskList 
-          tasks={tasks} 
-          onUpdateTask={handleUpdateTask} 
-          onDeleteTask={handleDeleteTask} 
+        <TaskList
+          tasks={tasks}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
         />
       </div>
     </div>
@@ -38,5 +38,3 @@ function App() {
 }
 
 export default App;
-
-

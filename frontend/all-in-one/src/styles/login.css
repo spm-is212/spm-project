@@ -215,29 +215,29 @@
   .login-container {
     padding: 1rem;
   }
-  
+
   .login-card {
     max-width: 320px;
   }
-  
+
   .logo-container {
     margin-bottom: 2rem;
   }
-  
+
   .logo-container h1 {
     font-size: 20px;
   }
-  
+
   .logo-container h2 {
     font-size: 28px;
   }
-  
+
   .form-field input,
   .form-input,
   .btn-primary {
     height: 48px;
   }
-  
+
   .form-container {
     gap: 12px;
   }

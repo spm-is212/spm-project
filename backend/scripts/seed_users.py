@@ -7,13 +7,13 @@ users = [
         "email": "shi@example.com",
         "password": "password123",
         "role": "user",
-        "departments": ["IT"], 
+        "departments": ["IT"],
     },
     {
         "email": "manager@example.com",
         "password": "admin123",
         "role": "manager",
-        "departments": ["IT"], 
+        "departments": ["IT"],
 
     },
 ]
