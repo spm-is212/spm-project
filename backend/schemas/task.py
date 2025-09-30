@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from typing import Optional, List, Dict
 from datetime import date
 from enum import Enum
@@ -14,6 +14,10 @@ class TaskStatus(str, Enum):
     COMPLETED = "COMPLETED"
     BLOCKED = "BLOCKED"
 
+class RecurrenceRule(str, Enum):
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
 
 class TaskPriority(str, Enum):
     LOW = "LOW"
@@ -28,36 +32,53 @@ class TaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.TO_DO
     priority: TaskPriority
     assignee_ids: List[str]
-    parent_id: Optional[str] = Field(default=MAIN_TASK_PARENT_ID, description="Parent ID for main tasks is always None")
+    parent_id: Optional[str] = Field(default=MAIN_TASK_PARENT_ID)
 
-    @field_validator('title')
+    # recurrence fields
+    recurrence_rule: Optional[RecurrenceRule] = None
+    recurrence_interval: int = 1
+    recurrence_end_date: Optional[date] = None
+
+    @field_validator("title")
     @classmethod
-    def title_not_empty(cls, v):
-        if v.strip() == '':
-            raise ValueError('Title cannot be empty')
+    def title_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title cannot be empty")
         return v
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
-    def description_not_empty(cls, v):
-        if v.strip() == '':
-            raise ValueError('Description cannot be empty')
+    def description_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Description cannot be empty")
         return v
 
-    @field_validator('assignee_ids')
+    @field_validator("assignee_ids")
     @classmethod
-    def assignee_ids_not_empty(cls, v):
-        # Allow empty assignee list - creator will be auto-assigned in TaskCreator
+    def assignee_ids_not_empty(cls, v: List[str]) -> List[str]:
         if v is not None and len(v) > 5:
-            raise ValueError('Maximum of 5 assignees allowed per task')
+            raise ValueError("Maximum of 5 assignees allowed per task")
         return v
 
-    @field_validator('due_date')
+    @field_validator("due_date")
     @classmethod
-    def due_date_not_past(cls, v):
-        from datetime import date
+    def due_date_not_past(cls, v: date) -> date:
         if v < date.today():
-            raise ValueError('Due date cannot be in the past')
+            raise ValueError("Due date cannot be in the past")
+        return v
+
+    @field_validator("recurrence_interval")
+    @classmethod
+    def interval_must_be_positive(cls, v: int, info: ValidationInfo) -> int:
+        if info.data.get("recurrence_rule") and v < 1:
+            raise ValueError("Recurrence interval must be at least 1")
+        return v
+
+    @field_validator("recurrence_end_date")
+    @classmethod
+    def end_date_after_due_date(cls, v: Optional[date], info: ValidationInfo) -> Optional[date]:
+        if v and info.data.get("due_date") and v < info.data["due_date"]:
+            raise ValueError("Recurrence end date cannot be before the due date")
         return v
 
 
@@ -70,34 +91,32 @@ class SubtaskCreate(BaseModel):
     assignee_ids: Optional[List[str]] = None
     parent_id: Optional[str] = None
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
-    def title_not_empty(cls, v):
-        if v.strip() == '':
-            raise ValueError('Title cannot be empty')
+    def title_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title cannot be empty")
         return v
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
-    def description_not_empty(cls, v):
-        if v.strip() == '':
-            raise ValueError('Description cannot be empty')
+    def description_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Description cannot be empty")
         return v
 
-    @field_validator('assignee_ids')
+    @field_validator("assignee_ids")
     @classmethod
-    def assignee_ids_not_empty_if_provided(cls, v):
-        # Allow empty assignee list - creator will be auto-assigned in TaskCreator
+    def assignee_ids_not_empty_if_provided(cls, v: Optional[List[str]]) -> Optional[List[str]]:
         if v is not None and len(v) > 5:
-            raise ValueError('Maximum of 5 assignees allowed per subtask')
+            raise ValueError("Maximum of 5 assignees allowed per subtask")
         return v
 
-    @field_validator('due_date')
+    @field_validator("due_date")
     @classmethod
-    def due_date_not_past(cls, v):
-        from datetime import date
+    def due_date_not_past(cls, v: date) -> date:
         if v < date.today():
-            raise ValueError('Due date cannot be in the past')
+            raise ValueError("Due date cannot be in the past")
         return v
 
 
@@ -110,35 +129,51 @@ class TaskUpdate(BaseModel):
     assignee_ids: Optional[List[str]] = None
     is_archived: Optional[bool] = None
 
-    @field_validator('title')
+    # recurrence fields
+    recurrence_rule: Optional[RecurrenceRule] = None
+    recurrence_interval: Optional[int] = None
+    recurrence_end_date: Optional[date] = None
+
+    @field_validator("title")
     @classmethod
-    def title_not_empty(cls, v):
-        if v is not None and v.strip() == '':
-            raise ValueError('Title cannot be empty')
+    def title_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Title cannot be empty")
         return v
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
-    def description_not_empty(cls, v):
-        if v is not None and v.strip() == '':
-            raise ValueError('Description cannot be empty')
+    def description_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Description cannot be empty")
         return v
 
-    @field_validator('assignee_ids')
+    @field_validator("assignee_ids")
     @classmethod
-    def assignee_ids_not_empty_if_provided(cls, v):
-        # Allow empty list for testing assignee removal
+    def assignee_ids_not_empty_if_provided(cls, v: Optional[List[str]]) -> Optional[List[str]]:
         if v is not None and len(v) > 5:
-            raise ValueError('Maximum of 5 assignees allowed per task')
+            raise ValueError("Maximum of 5 assignees allowed per task")
         return v
 
-    @field_validator('due_date')
+    @field_validator("due_date")
     @classmethod
-    def due_date_not_past(cls, v):
-        if v is not None:
-            from datetime import date
-            if v < date.today():
-                raise ValueError('Due date cannot be in the past')
+    def due_date_not_past(cls, v: Optional[date]) -> Optional[date]:
+        if v and v < date.today():
+            raise ValueError("Due date cannot be in the past")
+        return v
+
+    @field_validator("recurrence_interval")
+    @classmethod
+    def interval_must_be_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 1:
+            raise ValueError("Recurrence interval must be at least 1")
+        return v
+
+    @field_validator("recurrence_end_date")
+    @classmethod
+    def end_date_after_due_date(cls, v: Optional[date], info: ValidationInfo) -> Optional[date]:
+        if v and info.data.get("due_date") and v < info.data["due_date"]:
+            raise ValueError("Recurrence end date cannot be before the due date")
         return v
 
 
@@ -151,36 +186,34 @@ class SubtaskUpdate(BaseModel):
     assignee_ids: Optional[List[str]] = None
     is_archived: Optional[bool] = None
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
-    def title_not_empty(cls, v):
-        if v is not None and v.strip() == '':
-            raise ValueError('Title cannot be empty')
+    def title_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Title cannot be empty")
         return v
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
-    def description_not_empty(cls, v):
-        if v is not None and v.strip() == '':
-            raise ValueError('Description cannot be empty')
+    def description_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Description cannot be empty")
         return v
 
-    @field_validator('assignee_ids')
+    @field_validator("assignee_ids")
     @classmethod
-    def assignee_ids_not_empty_if_provided(cls, v):
+    def assignee_ids_not_empty_if_provided(cls, v: Optional[List[str]]) -> Optional[List[str]]:
         if v is not None and len(v) == 0:
-            raise ValueError('Assignee IDs list cannot be empty if provided')
+            raise ValueError("Assignee IDs list cannot be empty if provided")
         if v is not None and len(v) > 5:
-            raise ValueError('Maximum of 5 assignees allowed per subtask')
+            raise ValueError("Maximum of 5 assignees allowed per subtask")
         return v
 
-    @field_validator('due_date')
+    @field_validator("due_date")
     @classmethod
-    def due_date_not_past(cls, v):
-        if v is not None:
-            from datetime import date
-            if v < date.today():
-                raise ValueError('Due date cannot be in the past')
+    def due_date_not_past(cls, v: Optional[date]) -> Optional[date]:
+        if v and v < date.today():
+            raise ValueError("Due date cannot be in the past")
         return v
 
 

@@ -13,73 +13,37 @@ class TaskUpdater:
         self.table_name = "tasks"
 
     def can_remove_assignees(self, user_role: str, user_teams: list) -> bool:
-        """
-        Check if user can remove assignee IDs based on role and teams
-
-        Rules:
-        - Role is "manager" or "director"
-        - Teams include "sales manager" or "finance managers"
-        """
         if user_role in ["manager", "director"]:
             return True
-
         privileged_teams = ["sales manager", "finance managers"]
         return any(team in privileged_teams for team in user_teams)
 
     def _validate_main_task_archival(self, main_task_id: str, is_archived: bool) -> bool:
-        """
-        Validate if a main task can be archived based on subtask status
-
-        Rules:
-        - Main task can only be archived if ALL subtasks are archived OR it's a standalone task
-        - Main task can be unarchived anytime
-
-        Args:
-            main_task_id: ID of the main task
-            is_archived: Whether we're trying to archive (True) or unarchive (False)
-
-        Returns:
-            True if operation is allowed, False otherwise
-        """
         if not is_archived:
-            # Unarchiving is always allowed
             return True
-
-        # Check if main task has subtasks
         subtasks = self.crud.select(self.table_name, filters={"parent_id": main_task_id})
-
         if not subtasks:
-            # No subtasks, can archive immediately
             return True
-
-        # Check if all subtasks are archived
         for subtask in subtasks:
             if not subtask.get("is_archived", False):
                 return False
-
         return True
 
-    def update_tasks(self, main_task_id: str, user_role: str, user_teams: list, main_task: Optional[TaskUpdate] = None, subtasks: Optional[Dict[str, TaskUpdate]] = None) -> Dict[str, Any]:
-        """
-        Update main task and/or subtasks
-
-        Args:
-            main_task_id: ID of the main task
-            user_role: Role of the user updating the tasks
-            user_teams: Teams the user belongs to
-            main_task: Optional main task update data
-            subtasks: Optional dictionary of {subtask_id: TaskUpdate} for updates
-
-        Returns:
-            Dictionary containing updated main task and subtasks
-        """
+    def update_tasks(
+        self,
+        main_task_id: str,
+        user_role: str,
+        user_teams: list,
+        main_task: Optional[TaskUpdate] = None,
+        subtasks: Optional[Dict[str, TaskUpdate]] = None
+    ) -> Dict[str, Any]:
         result = {
             "main_task": None,
             "updated_subtasks": []
         }
 
+        # --- MAIN TASK UPDATE ---
         if main_task:
-
             main_task_dict = {}
 
             if main_task.title:
@@ -92,19 +56,28 @@ class TaskUpdater:
                 main_task_dict["status"] = main_task.status.value
             if main_task.priority:
                 main_task_dict["priority"] = main_task.priority.value
+
             if main_task.assignee_ids is not None:
                 current_task = self.crud.select(self.table_name, filters={"id": main_task_id})
                 if current_task:
                     current_assignees = set(current_task[0].get("assignee_ids", []))
                     new_assignees = set(main_task.assignee_ids)
-
                     if new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees):
                         if self.can_remove_assignees(user_role, user_teams):
                             main_task_dict["assignee_ids"] = main_task.assignee_ids
                     else:
                         main_task_dict["assignee_ids"] = main_task.assignee_ids
+
             if main_task.is_archived is not None:
                 main_task_dict["is_archived"] = main_task.is_archived
+
+            # ✅ recurrence for main task
+            if main_task.recurrence_rule is not None:
+                main_task_dict["recurrence_rule"] = main_task.recurrence_rule.value
+            if main_task.recurrence_interval is not None:
+                main_task_dict["recurrence_interval"] = main_task.recurrence_interval
+            if main_task.recurrence_end_date is not None:
+                main_task_dict["recurrence_end_date"] = main_task.recurrence_end_date.isoformat()
 
             if main_task_dict:
                 main_task_dict["parent_id"] = MAIN_TASK_PARENT_ID
@@ -115,6 +88,7 @@ class TaskUpdater:
                 )
                 result["main_task"] = results[0] if results else None
 
+        # --- SUBTASKS UPDATE ---
         if subtasks:
             for subtask_id, subtask_data in subtasks.items():
                 subtask_dict = {}
@@ -135,7 +109,6 @@ class TaskUpdater:
                     if current_subtask:
                         current_assignees = set(current_subtask[0].get("assignee_ids", []))
                         new_assignees = set(subtask_data.assignee_ids)
-
                         if new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees):
                             if self.can_remove_assignees(user_role, user_teams):
                                 subtask_dict["assignee_ids"] = subtask_data.assignee_ids
@@ -144,6 +117,14 @@ class TaskUpdater:
 
                 if subtask_data.is_archived is not None:
                     subtask_dict["is_archived"] = subtask_data.is_archived
+
+                # ✅ recurrence for subtasks (if allowed)
+                if subtask_data.recurrence_rule is not None:
+                    subtask_dict["recurrence_rule"] = subtask_data.recurrence_rule.value
+                if subtask_data.recurrence_interval is not None:
+                    subtask_dict["recurrence_interval"] = subtask_data.recurrence_interval
+                if subtask_data.recurrence_end_date is not None:
+                    subtask_dict["recurrence_end_date"] = subtask_data.recurrence_end_date.isoformat()
 
                 if subtask_dict:
                     results = self.crud.update(

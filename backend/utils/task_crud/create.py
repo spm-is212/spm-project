@@ -39,7 +39,10 @@ class TaskCreator:
             "parent_id": MAIN_TASK_PARENT_ID,
             "comments": [],
             "attachments": [],
-            "is_archived": False
+            "is_archived": False,
+            "recurrence_rule": main_task.recurrence_rule.value if main_task.recurrence_rule else None,
+            "recurrence_interval": main_task.recurrence_interval,
+            "recurrence_end_date": main_task.recurrence_end_date.isoformat() if main_task.recurrence_end_date else None,
         }
 
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
@@ -66,7 +69,10 @@ class TaskCreator:
                     "parent_id": created_main_task["id"],  # Set parent to main task ID
                     "comments": [],
                     "attachments": [],
-                    "is_archived": False
+                    "is_archived": False,
+                    "recurrence_rule": subtask_data.recurrence_rule.value if subtask_data.recurrence_rule else None,
+                    "recurrence_interval": subtask_data.recurrence_interval,
+                    "recurrence_end_date": subtask_data.recurrence_end_date.isoformat() if subtask_data.recurrence_end_date else None,
                 }
 
                 created_subtask = self.crud.insert(self.table_name, subtask_dict)
