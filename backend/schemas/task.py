@@ -193,3 +193,4 @@ class TaskUpdateRequest(BaseModel):
     main_task_id: str
     main_task: Optional[TaskUpdate] = None
     subtasks: Optional[Dict[str, SubtaskUpdate]] = None
+    new_subtasks: Optional[List[SubtaskCreate]] = None

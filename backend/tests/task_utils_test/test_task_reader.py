@@ -149,10 +149,9 @@ class TestTaskReader:
         assert result == expected_tasks
 
     def test_regular_staff_can_view_team_and_assigned_tasks(self, mock_crud, mock_user_manager, sample_tasks, sample_users):
-        """Test that regular staff can view team tasks and assigned tasks"""
+        """Test that regular staff can view assigned tasks and parent tasks of assigned subtasks"""
         # Arrange
         mock_crud.select.return_value = sample_tasks
-        mock_user_manager.get_users_by_team.return_value = sample_users["team_users"]
 
         reader = TaskReader()
         reader.crud = mock_crud
@@ -167,12 +166,10 @@ class TestTaskReader:
         )
 
         # Assert
-        mock_user_manager.get_users_by_team.assert_called_once_with("team1")
         # Should return:
-        # - task-1: owned by user-1 (team member) AND user-1 is assigned to it
-        # - task-2: owned by user-3 (team member)
-        # - task-3: user-1 is assigned to it
-        expected_task_ids = {"task-1", "task-2", "task-3"}
+        # - task-1: user-1 is assigned to it directly
+        # - task-3: user-1 is assigned to it (it's a subtask of task-1)
+        expected_task_ids = {"task-1", "task-3"}
         result_task_ids = {task["id"] for task in result}
         assert result_task_ids == expected_task_ids
 
