@@ -106,7 +106,7 @@ const fetchUsers = useCallback(async () => {
     }
   } catch (err: unknown) {
     console.error(`Failed to fetch users: ${err instanceof Error ? err.message : String(err)}`);
-    setError(`Failed to fetch team members: ${err instanceof Error ? err.message : String(err)}`);
+    setError(`Failed to fetch team members: ${err instanceof Error ? err.message : String(err)}`)
 
     // Fallback: just set current user as available
     const userId = getUserIdFromToken();
@@ -247,7 +247,6 @@ const updateSubtask = async (mainTaskId: string, subtaskId: string, subtaskData:
   try {
     const userId = getUserIdFromToken();
     const assigneeIds = selectedAssignees.length > 0 ? selectedAssignees : (userId ? [userId] : []);
-
     const payload = {
       main_task_id: mainTaskId,
       main_task: {},
@@ -280,6 +279,7 @@ const updateSubtask = async (mainTaskId: string, subtaskId: string, subtaskData:
 
 // Archive/unarchive subtask function
 const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived: boolean): Promise<void> => {
+
   setLoading(true);
   setError("");
   try {

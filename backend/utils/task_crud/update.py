@@ -79,7 +79,6 @@ class TaskUpdater:
         }
 
         if main_task:
-            # Note: Removed restrictive archival validation to allow flexible task management
 
             main_task_dict = {}
 
