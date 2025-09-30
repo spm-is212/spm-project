@@ -55,6 +55,7 @@ export interface NewTask {
 export interface NewSubtask {
     title: string;
     description: string;
+    status: TaskStatus;
     priority: TaskPriority;
     due_date: string;
     comments: string;
