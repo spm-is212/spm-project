@@ -728,16 +728,6 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                 placeholder="Enter task description"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
-              <textarea
-                value={newTask.comments}
-                onChange={(e) => setNewTask({...newTask, comments: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows="2"
-                placeholder="Enter initial comments (optional)"
-              />
-            </div>
 
             {/* Subtasks Section */}
             <div className="border-t pt-4">
@@ -903,16 +893,6 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       rows="2"
                       placeholder="Enter subtask description"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
-                    <textarea
-                      value={newSubtask.comments}
-                      onChange={(e) => setNewSubtask({...newSubtask, comments: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows="2"
-                      placeholder="Enter initial comments (optional)"
                     />
                   </div>
                   <div className="flex space-x-2">
