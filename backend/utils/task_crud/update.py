@@ -79,10 +79,7 @@ class TaskUpdater:
         }
 
         if main_task:
-            # Validate archival rules for main tasks
-            if main_task.is_archived is not None:
-                if not self._validate_main_task_archival(main_task_id, main_task.is_archived):
-                    raise ValueError("Cannot archive main task: all subtasks must be archived first")
+            # Note: Removed restrictive archival validation to allow flexible task management
 
             main_task_dict = {}
 

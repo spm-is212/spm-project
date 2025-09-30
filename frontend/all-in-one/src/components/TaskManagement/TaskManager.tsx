@@ -11,6 +11,7 @@ const TaskManager = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingAssignees, setEditingAssignees] = useState<string[]>([]);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [users, setUsers] = useState<UserType[]>([]);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
@@ -234,6 +235,72 @@ const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> =
     await fetchTasks(); // Refresh the task list
   } catch (err: unknown) {
     setError(`Failed to archive/unarchive task: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Update subtask function
+const updateSubtask = async (mainTaskId: string, subtaskId: string, subtaskData: Partial<Task>): Promise<void> => {
+  setLoading(true);
+  setError("");
+  try {
+    const userId = getUserIdFromToken();
+    const assigneeIds = selectedAssignees.length > 0 ? selectedAssignees : (userId ? [userId] : []);
+
+    const payload = {
+      main_task_id: mainTaskId,
+      main_task: {},
+      subtasks: {
+        [subtaskId]: {
+          title: subtaskData.title,
+          description: subtaskData.description,
+          due_date: subtaskData.due_date,
+          priority: subtaskData.priority,
+          status: subtaskData.status,
+          assignee_ids: assigneeIds,
+          ...(subtaskData.is_archived !== undefined && { is_archived: subtaskData.is_archived })
+        }
+      }
+    };
+
+    await apiFetch("tasks/updateTask", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+
+    await fetchTasks();
+    setEditingTask(null);
+  } catch (err: unknown) {
+    setError(`Failed to update subtask: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Archive/unarchive subtask function
+const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived: boolean): Promise<void> => {
+  setLoading(true);
+  setError("");
+  try {
+    const payload = {
+      main_task_id: mainTaskId,
+      main_task: {},
+      subtasks: {
+        [subtaskId]: {
+          is_archived: isArchived
+        }
+      }
+    };
+
+    await apiFetch("tasks/updateTask", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+
+    await fetchTasks(); // Refresh the task list
+  } catch (err: unknown) {
+    setError(`Failed to archive/unarchive subtask: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setLoading(false);
   }
@@ -709,13 +776,67 @@ const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> =
                   }}
                   className="w-full p-1 border border-gray-300 rounded text-xs"
                 />
-                <input
-                  type="text"
-                  value={editingTask.assigned_to}
-                  onChange={(e) => setEditingTask({...editingTask, assigned_to: e.target.value})}
-                  className="w-full p-1 border border-gray-300 rounded text-xs"
-                  placeholder="Assigned to"
-                />
+                <div className="relative">
+                  <div className="w-full min-h-[32px] p-1 border border-gray-300 rounded text-xs bg-white">
+                    {/* Selected Users */}
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {editingAssignees.map(userId => {
+                        const user = users.find(u => u.id === userId);
+                        const isCurrentUser = userId === currentUserId;
+                        return (
+                          <span
+                            key={userId}
+                            className={`inline-flex items-center px-1 py-0.5 text-xs rounded-full ${
+                              isCurrentUser
+                                ? 'bg-blue-100 text-blue-800 opacity-75'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {user?.username || user?.email?.split('@')[0] || 'Unknown'}
+                            {isCurrentUser && ' (You)'}
+                            {!isCurrentUser && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingAssignees(prev => prev.filter(id => id !== userId))}
+                                className="ml-1 text-gray-500 hover:text-gray-700"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Dropdown */}
+                    <select
+                      onChange={(e) => {
+                        const userId = e.target.value;
+                        if (userId && !editingAssignees.includes(userId)) {
+                          if (editingAssignees.length >= 5) {
+                            setError('Maximum of 5 assignees allowed per task');
+                            return;
+                          }
+                          setEditingAssignees(prev => [...prev, userId]);
+                        }
+                        e.target.value = '';
+                      }}
+                      className="w-full text-xs border-0 outline-none bg-transparent"
+                      value=""
+                    >
+                      <option value="">Add assignee...</option>
+                      {users
+                        .filter(user => !editingAssignees.includes(user.id))
+                        .map(user => (
+                          <option key={user.id} value={user.id}>
+                            {user.username || user.email?.split('@')[0] || 'Unknown'}
+                            {user.team ? ` (${user.team})` : ''}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                </div>
                 <div className="flex space-x-2">
                   <button
                     type="button"
@@ -743,7 +864,10 @@ const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> =
                   <h3 className="text-lg font-semibold text-gray-900 flex-1">{task.title}</h3>
                   <div className="flex space-x-1 ml-2">
                     <button
-                      onClick={() => setEditingTask(task)}
+                      onClick={() => {
+                        setEditingTask(task);
+                        setEditingAssignees(task.assignee_ids || []);
+                      }}
                       className="text-blue-600 hover:text-blue-800 p-1"
                       title="Edit task"
                     >
@@ -797,34 +921,150 @@ const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> =
 
                   {/* Subtasks Display */}
                   {task.subtasks && task.subtasks.length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="text-xs font-medium text-gray-700 mb-2">
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="text-sm font-medium text-gray-700 mb-3">
                         Subtasks ({task.subtasks.length})
                       </div>
-                      <div className="space-y-1">
-                        {task.subtasks.slice(0, 3).map((subtask, index) => (
-                          <div key={index} className="bg-gray-50 p-2 rounded text-xs">
-                            <div className="flex justify-between items-start">
-                              <span className="font-medium text-gray-800 flex-1 pr-2">{subtask.title}</span>
-                              <div className="flex space-x-1">
-                                <span className={`px-1 py-0.5 rounded text-xs ${getPriorityColor(subtask.priority)}`}>
-                                  {subtask.priority?.charAt(0)}
-                                </span>
-                                {subtask.is_archived && (
-                                  <span className="px-1 py-0.5 rounded text-xs bg-gray-300 text-gray-600">A</span>
-                                )}
+                      <div className="space-y-3">
+                        {task.subtasks.map((subtask, index) => (
+                          <div key={subtask.id || index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            {editingTask && editingTask.id === subtask.id ? (
+                              /* Subtask Edit Form */
+                              <div className="space-y-3">
+                                <input
+                                  type="text"
+                                  value={editingTask.title}
+                                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                                  className="w-full p-2 border border-gray-300 rounded text-sm font-medium"
+                                  required
+                                />
+                                <textarea
+                                  value={editingTask.description}
+                                  onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
+                                  className="w-full p-2 border border-gray-300 rounded text-sm resize-none"
+                                  rows={2}
+                                />
+                                <div className="grid grid-cols-3 gap-2">
+                                  <select
+                                    value={editingTask.status}
+                                    onChange={(e) => setEditingTask({...editingTask, status: e.target.value})}
+                                    className="w-full p-1 border border-gray-300 rounded text-xs"
+                                  >
+                                    <option value="TO_DO">To Do</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="BLOCKED">Blocked</option>
+                                  </select>
+                                  <select
+                                    value={editingTask.priority}
+                                    onChange={(e) => setEditingTask({...editingTask, priority: e.target.value})}
+                                    className="w-full p-1 border border-gray-300 rounded text-xs"
+                                  >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                  </select>
+                                  <input
+                                    type="date"
+                                    value={editingTask.due_date}
+                                    onChange={(e) => {
+                                      const selectedDate = e.target.value;
+                                      const today = new Date().toISOString().split('T')[0];
+                                      if (selectedDate && selectedDate < today) {
+                                        setError('Due date cannot be in the past');
+                                        return;
+                                      }
+                                      setEditingTask({...editingTask, due_date: selectedDate});
+                                    }}
+                                    className="w-full p-1 border border-gray-300 rounded text-xs"
+                                  />
+                                </div>
+                                <div className="flex space-x-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSubtask(task.id, subtask.id, editingTask)}
+                                    disabled={loading}
+                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50 flex items-center"
+                                  >
+                                    <Save className="w-3 h-3 mr-1" />
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingTask(null)}
+                                    className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center"
+                                  >
+                                    <X className="w-3 h-3 mr-1" />
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                            {subtask.description && (
-                              <div className="text-gray-600 mt-1 line-clamp-1">{subtask.description}</div>
+                            ) : (
+                              /* Subtask Display */
+                              <>
+                                <div className="flex justify-between items-start mb-2">
+                                  <h4 className="text-sm font-medium text-gray-900 flex-1">{subtask.title}</h4>
+                                  <div className="flex space-x-1 ml-2">
+                                    <button
+                                      onClick={() => {
+                                        setEditingTask(subtask);
+                                        setEditingAssignees(subtask.assignee_ids || []);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-800 p-1"
+                                      title="Edit subtask"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => archiveSubtask(task.id, subtask.id, !subtask.is_archived)}
+                                      className={`p-1 ${subtask.is_archived ? 'text-green-600 hover:text-green-800' : 'text-orange-600 hover:text-orange-800'}`}
+                                      title={subtask.is_archived ? "Unarchive subtask" : "Archive subtask"}
+                                      disabled={loading}
+                                    >
+                                      {subtask.is_archived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {subtask.description && (
+                                  <p className="text-gray-600 text-xs mb-2">{subtask.description}</p>
+                                )}
+
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center">
+                                    <div className="flex space-x-2">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
+                                        {subtask.status?.replace('_', ' ').toUpperCase()}
+                                      </span>
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
+                                        {subtask.priority?.toUpperCase()}
+                                      </span>
+                                      {subtask.is_archived && (
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                          ARCHIVED
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {subtask.due_date && (
+                                    <div className="flex items-center text-xs text-gray-600">
+                                      <Calendar className="w-3 h-3 mr-1" />
+                                      {new Date(subtask.due_date).toLocaleDateString()}
+                                    </div>
+                                  )}
+
+                                  {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
+                                    <div className="flex items-center text-xs text-gray-600">
+                                      <User className="w-3 h-3 mr-1" />
+                                      {subtask.assignee_ids.length} assignee(s)
+                                    </div>
+                                  )}
+                                </div>
+                              </>
                             )}
                           </div>
                         ))}
-                        {task.subtasks.length > 3 && (
-                          <div className="text-xs text-gray-500 italic">
-                            +{task.subtasks.length - 3} more subtasks
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
