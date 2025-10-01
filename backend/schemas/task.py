@@ -134,7 +134,7 @@ class TaskUpdate(BaseModel):
 
     # recurrence fields
     recurrence_rule: Optional[RecurrenceRule] = None
-    recurrence_interval: Optional[int] = 1
+    recurrence_interval: Optional[int] = None
     recurrence_end_date: Optional[date] = None
 
     @field_validator("title")

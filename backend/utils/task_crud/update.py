@@ -99,15 +99,18 @@ class TaskUpdater:
                 if current_task:
                     current_assignees = set(current_task[0].get(ASSIGNEE_IDS_FIELD, []))
                     new_assignees = set(main_task.assignee_ids)
-                    if new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees):
+                    is_removal = new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees)
+                    if is_removal:
                         if self.can_remove_assignees(user_role, user_teams):
                             if len(main_task.assignee_ids) == 0:
                                 raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
                             main_task_dict[ASSIGNEE_IDS_FIELD] = main_task.assignee_ids
+                        # else: staff removal → skip (don’t set assignee_ids at all)
                     else:
                         if len(main_task.assignee_ids) == 0:
                             raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
                         main_task_dict[ASSIGNEE_IDS_FIELD] = main_task.assignee_ids
+
                         
             if main_task.is_archived is not None:
                 main_task_dict[IS_ARCHIVED_FIELD] = main_task.is_archived
@@ -121,15 +124,23 @@ class TaskUpdater:
                 main_task_dict["recurrence_end_date"] = main_task.recurrence_end_date.isoformat()
 
             if main_task_dict:
-                main_task_dict[PARENT_ID_FIELD] = MAIN_TASK_PARENT_ID
+                # Add parent_id alongside other fields
+                main_task_dict_with_parent = {**main_task_dict, PARENT_ID_FIELD: MAIN_TASK_PARENT_ID}
                 results = self.crud.update(
                     self.table_name,
-                    main_task_dict,
+                    main_task_dict_with_parent,
                     {TASK_ID_FIELD: main_task_id}
                 )
-                result[MAIN_TASK_RESPONSE_KEY] = results[0] if results else None
-
-        # --- SUBTASKS UPDATE ---
+                if results:
+                    if isinstance(results, list):
+                        result[MAIN_TASK_RESPONSE_KEY] = results[0]
+                    elif isinstance(results, dict):
+                        result[MAIN_TASK_RESPONSE_KEY] = results
+            else:
+                # No meaningful fields provided → skip update
+                result[MAIN_TASK_RESPONSE_KEY] = None
+                
+     # --- SUBTASKS UPDATE ---
         if subtasks:
             for subtask_id, subtask_data in subtasks.items():
                 subtask_dict = {}
@@ -150,11 +161,14 @@ class TaskUpdater:
                     if current_subtask:
                         current_assignees = set(current_subtask[0].get(ASSIGNEE_IDS_FIELD, []))
                         new_assignees = set(subtask_data.assignee_ids)
-                        if new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees):
+                        is_removal = new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees)
+
+                        if is_removal:
                             if self.can_remove_assignees(user_role, user_teams):
                                 if len(subtask_data.assignee_ids) == 0:
                                     raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
                                 subtask_dict[ASSIGNEE_IDS_FIELD] = subtask_data.assignee_ids
+                            # else: staff removal → skip (don’t set assignee_ids at all)
                         else:
                             if len(subtask_data.assignee_ids) == 0:
                                 raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
@@ -178,7 +192,10 @@ class TaskUpdater:
                         {TASK_ID_FIELD: subtask_id, PARENT_ID_FIELD: main_task_id}
                     )
                     if results:
-                        result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results[0])
+                        if isinstance(results, list):
+                            result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results[0])
+                        elif isinstance(results, dict):
+                            result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results)
 
         if new_subtasks:
             for new_subtask in new_subtasks:
