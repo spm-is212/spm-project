@@ -36,7 +36,7 @@ class TaskCreate(BaseModel):
 
     # recurrence fields
     recurrence_rule: Optional[RecurrenceRule] = None
-    recurrence_interval: int = 1
+    recurrence_interval: Optional[int] = 1
     recurrence_end_date: Optional[date] = None
 
     @field_validator("title")
@@ -90,6 +90,9 @@ class SubtaskCreate(BaseModel):
     priority: TaskPriority
     assignee_ids: Optional[List[str]] = None
     parent_id: Optional[str] = None
+    recurrence_rule: Optional[RecurrenceRule] = None
+    recurrence_interval: Optional[int] = 1
+    recurrence_end_date: Optional[date] = None
 
     @field_validator("title")
     @classmethod
@@ -131,7 +134,7 @@ class TaskUpdate(BaseModel):
 
     # recurrence fields
     recurrence_rule: Optional[RecurrenceRule] = None
-    recurrence_interval: Optional[int] = None
+    recurrence_interval: Optional[int] = 1
     recurrence_end_date: Optional[date] = None
 
     @field_validator("title")
