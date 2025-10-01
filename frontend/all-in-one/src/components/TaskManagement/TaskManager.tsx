@@ -22,7 +22,10 @@ const TaskManager = () => {
     status: 'TO_DO',
     priority: 'MEDIUM',
     due_date: '',
-    comments: ''
+    comments: '',
+    recurrence_rule: '',       // DAILY, WEEKLY, MONTHLY
+    recurrence_interval: 1,    // how many units
+    recurrence_end_date: ''    // optional end date
   });
   const [subtasks, setSubtasks] = useState<NewSubtask[]>([]);
   const [showSubtaskForm, setShowSubtaskForm] = useState<boolean>(false);
@@ -45,7 +48,18 @@ const TaskManager = () => {
     if (user) setUserInfo(user);
   }, []);
 
-
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      try {
+        const payloadBase64 = token.split(".")[1];
+        const payloadDecoded = JSON.parse(atob(payloadBase64));
+        console.log("Decoded JWT payload:", payloadDecoded);
+      } catch (e) {
+        console.error("Failed to decode JWT", e);
+      }
+    }
+  }, []);
 
 // fetch tasks
 const fetchTasks = useCallback(async () => {
@@ -92,6 +106,37 @@ function getUserIdFromToken(): string | null {
     console.error("Failed to decode JWT", e);
     return null;
   }
+}
+
+function validateTask(task: NewTask, assignees: string[], currentUserId: string | null): string | null {
+  if (!task.title.trim()) return "Task title is required";
+  if (!task.description.trim()) return "Task description is required";
+
+  const allowedStatuses = ["TO_DO", "IN_PROGRESS", "COMPLETED", "BLOCKED"];
+  if (!allowedStatuses.includes(task.status.toUpperCase())) {
+    return "Invalid status value";
+  }
+
+  const allowedPriorities = ["LOW", "MEDIUM", "HIGH"];
+  if (!allowedPriorities.includes(task.priority.toUpperCase())) {
+    return "Invalid priority value";
+  }
+
+  if (!task.due_date) {
+    return "Due date is required";
+  } else {
+    const today = new Date().toISOString().split("T")[0];
+    if (task.due_date < today) {
+      return "Due date cannot be in the past";
+    }
+  }
+
+
+  if (assignees.length === 0 && !currentUserId) {
+    return "At least one assignee is required";
+  }
+
+  return null; 
 }
 
 // fetch users from current user's department
@@ -179,7 +224,10 @@ const createTask = async (taskData: NewTask): Promise<void> => {
         description: taskData.description,
         due_date: taskData.due_date,
         priority: taskData.priority,
-        assignee_ids: mainTaskAssignees
+        assignee_ids: mainTaskAssignees,
+        recurrence_rule: taskData.recurrence_rule || null,
+        recurrence_interval: taskData.recurrence_interval || 1,
+        recurrence_end_date: taskData.recurrence_end_date || null
       },
       subtasks: formattedSubtasks
     };
@@ -234,6 +282,9 @@ const updateTask = async (taskId: string, taskData: Partial<Task>): Promise<void
         priority: taskData.priority,
         status: taskData.status,
         assignee_ids: assigneeIds,
+        recurrence_rule: taskData.recurrence_rule || null,
+        recurrence_interval: taskData.recurrence_interval || 1,
+        recurrence_end_date: taskData.recurrence_end_date || null,
         ...(taskData.is_archived !== undefined && { is_archived: taskData.is_archived })
       },
       subtasks: {},
@@ -474,8 +525,11 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
 
   // Handle form submissions
   const handleCreateSubmit = () => {
-    if (!newTask.title.trim()) {
-      setError('Task title is required');
+    const userId = getUserIdFromToken();
+
+    const errorMsg = validateTask(newTask, selectedAssignees, userId);
+    if (errorMsg) {
+      setError(errorMsg);
       return;
     }
 
@@ -484,9 +538,9 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       setError('Task must have at least one assignee');
       return;
     }
-
     createTask(newTask);
   };
+
 
   const handleUpdateSubmit = () => {
     if (!editingTask.title.trim()) {
@@ -655,6 +709,43 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+                <select
+                  value={newTask.recurrence_rule}
+                  onChange={(e) => setNewTask({...newTask, recurrence_rule: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Does not repeat</option>
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                </select>
+              </div>
+
+              {newTask.recurrence_rule && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Repeat Every</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newTask.recurrence_interval}
+                      onChange={(e) => setNewTask({...newTask, recurrence_interval: parseInt(e.target.value)})}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Recurrence</label>
+                    <input
+                      type="date"
+                      value={newTask.recurrence_end_date}
+                      onChange={(e) => setNewTask({...newTask, recurrence_end_date: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
                 <div className="relative">
@@ -1000,7 +1091,42 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                     setEditingTask({...editingTask, due_date: e.target.value});
                   }}
                   className="w-full p-1 border border-gray-300 rounded text-xs"
-                />
+                /><select
+                  value={editingTask.recurrence_rule || ""}
+                  onChange={(e) => setEditingTask({ ...editingTask, recurrence_rule: e.target.value })}
+                  className="p-1 border border-gray-300 rounded text-xs"
+                >
+                  <option value="">Does not repeat</option>
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                </select>
+
+                {editingTask.recurrence_rule && (
+                  <>
+                    <input
+                      type="number"
+                      min="1"
+                      value={editingTask.recurrence_interval || 1}
+                      onChange={(e) =>
+                        setEditingTask({
+                          ...editingTask,
+                          recurrence_interval: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      className="p-1 border border-gray-300 rounded text-xs"
+                      placeholder="Interval"
+                    />
+                    <input
+                      type="date"
+                      value={editingTask.recurrence_end_date || ""}
+                      onChange={(e) =>
+                        setEditingTask({ ...editingTask, recurrence_end_date: e.target.value })
+                      }
+                      className="p-1 border border-gray-300 rounded text-xs"
+                    />
+                  </>
+                )} 
                 <div className="relative">
                   <div className="w-full min-h-[32px] p-1 border border-gray-300 rounded text-xs bg-white">
                     {/* Selected Users */}
@@ -1328,6 +1454,17 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       {new Date(task.due_date).toLocaleDateString()}
                     </div>
                   )}
+
+                  {task.recurrence_rule && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      Repeats every {task.recurrence_interval}{" "}
+                      {task.recurrence_rule.toLowerCase()}
+                      {task.recurrence_interval > 1 ? "s" : ""}
+                      {task.recurrence_end_date &&
+                        ` until ${new Date(task.recurrence_end_date).toLocaleDateString()}`}
+                    </div>
+                  )}
+
 
                   {task.assignee_ids && task.assignee_ids.length > 0 && (
                     <div className="flex items-center text-sm text-gray-600">

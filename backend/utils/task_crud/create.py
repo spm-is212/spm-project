@@ -49,6 +49,9 @@ class TaskCreator:
             COMMENTS_FIELD: DEFAULT_COMMENTS,
             ATTACHMENTS_FIELD: DEFAULT_ATTACHMENTS,
             IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED,
+           "recurrence_rule": main_task.recurrence_rule.value if main_task.recurrence_rule else None,
+            "recurrence_interval": main_task.recurrence_interval,
+            "recurrence_end_date": main_task.recurrence_end_date.isoformat() if main_task.recurrence_end_date else None,
         }
 
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
@@ -76,6 +79,10 @@ class TaskCreator:
                     COMMENTS_FIELD: DEFAULT_COMMENTS,
                     ATTACHMENTS_FIELD: DEFAULT_ATTACHMENTS,
                     IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED,
+                    "recurrence_rule": subtask_data.recurrence_rule.value if subtask_data.recurrence_rule else None,
+                    "recurrence_interval": subtask_data.recurrence_interval,
+                    "recurrence_end_date": subtask_data.recurrence_end_date.isoformat() if subtask_data.recurrence_end_date else None,
+
                 }
 
                 created_subtask = self.crud.insert(self.table_name, subtask_dict)
