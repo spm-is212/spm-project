@@ -1,5 +1,5 @@
 export async function apiFetch(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("access_token");
+  const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
