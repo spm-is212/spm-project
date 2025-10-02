@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Users } from 'lucide-react';
-import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import type { Task, User as UserType, TaskStatus, TaskPriority} from '../../types/Task';
@@ -241,7 +240,6 @@ useEffect(() => {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-gray-900">Teams</h1>
-          <LogoutButton />
         </div>
         <p className="text-gray-600">Your Projects Tracker</p>
 

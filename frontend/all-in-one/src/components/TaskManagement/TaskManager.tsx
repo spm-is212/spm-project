@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield } from 'lucide-react';
-import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import type { Task, NewTask, NewSubtask, User as UserType, TaskPriority } from '../../types/Task';
@@ -372,7 +371,6 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       <div className="mb-8">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h1 className="text-3xl font-bold text-gray-900">Smart Task Manager</h1>
-          <LogoutButton />
         </div>
         <p className="text-gray-600">Manage your tasks efficiently with full CRUD operations</p>
 
