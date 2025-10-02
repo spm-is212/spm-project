@@ -654,6 +654,14 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
           <Plus className="w-4 h-4 mr-2" />
           Add New Task
         </button>
+
+        <button 
+          // onClick={toggleSortByPriority}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+        >
+          Sort by Priority
+        </button>
+        
       </div>
 
       {/* Add Task Form */}
