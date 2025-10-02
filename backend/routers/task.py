@@ -28,16 +28,19 @@ def create_task_endpoint(request: TaskCreateRequest, user: dict = Depends(get_cu
 @router.put("/updateTask")
 def update_task_endpoint(request: TaskUpdateRequest, user: dict = Depends(get_current_user)):
     try:
+        user_id = user["sub"]
         user_role = user["role"]
         user_teams = user.get("teams", [])
 
         task_updater = TaskUpdater()
         result = task_updater.update_tasks(
             main_task_id=request.main_task_id,
+            user_id=user_id,
             user_role=user_role,
             user_teams=user_teams,
             main_task=request.main_task,
-            subtasks=request.subtasks
+            subtasks=request.subtasks,
+            new_subtasks=request.new_subtasks
         )
 
         return result
