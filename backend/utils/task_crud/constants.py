@@ -49,3 +49,8 @@ SUBTASKS_RESPONSE_KEY = "subtasks"
 # Validation error messages
 TASK_ASSIGNEE_REQUIRED_ERROR = "Task must have at least one assignee"
 SUBTASK_ASSIGNEE_REQUIRED_ERROR = "Subtask must have at least one assignee"
+
+from datetime import date, timedelta
+
+def make_future_due_date():
+    return (date.today() + timedelta(days=7)).isoformat()
