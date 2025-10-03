@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Users, Building, ChevronDown, ChevronRight } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
+import { API_ENDPOINTS } from '../../config/api';
 import type { Task, User as UserType } from '../../types/Task';
 
 interface Project {
@@ -48,6 +49,8 @@ const TeamView = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('due_date');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const user = getUserFromToken();
@@ -62,24 +65,22 @@ const TeamView = () => {
     }
   }, []);
 
-  // Fetch user's teams in their department
+  // Fetch user's teams
   const fetchTeams = useCallback(async () => {
     try {
-      const data = await apiFetch("teams/my-teams");
+      const data = await apiFetch(API_ENDPOINTS.TEAMS.MY_TEAMS);
 
-      // Transform string array to Team objects if needed (backend returns strings currently)
-      let teamsData = data.teams || [];
-      if (teamsData.length > 0 && typeof teamsData[0] === 'string') {
-        teamsData = teamsData.map((teamName: string, index: number) => ({
-          id: `team${index + 1}`,
-          name: teamName,
-          member_count: 0
-        }));
-      }
+      // Backend should return team objects with valid UUIDs
+      const teamsData = data.teams || [];
 
-      setTeams(teamsData);
-      if (teamsData.length > 0 && !selectedTeam) {
-        setSelectedTeam(teamsData[0].id || '');
+      // Validate that we have proper team objects with UUIDs
+      const validTeams = teamsData.filter((team: any) =>
+        team && typeof team === 'object' && team.id && team.name
+      );
+
+      setTeams(validTeams);
+      if (validTeams.length > 0 && !selectedTeam) {
+        setSelectedTeam(validTeams[0].id || '');
       }
     } catch (err: unknown) {
       console.error(`Failed to fetch teams: ${err instanceof Error ? err.message : String(err)}`);
@@ -87,25 +88,35 @@ const TeamView = () => {
     }
   }, [selectedTeam]);
 
-  // Fetch projects for selected team(s)
+  // Fetch projects for user's teams only
   const fetchProjects = useCallback(async () => {
     try {
-      const endpoint = selectedTeam && selectedTeam !== ''
-        ? `projects/list?team_id=${selectedTeam}`
-        : 'projects/list';
-      const data = await apiFetch(endpoint);
-      setProjects(data || []);
+      if (teams.length === 0) {
+        setProjects([]);
+        return;
+      }
+
+      // Fetch all projects, then filter to only user's teams
+      const data = await apiFetch(API_ENDPOINTS.PROJECTS.LIST);
+      const allProjects = data || [];
+
+      // Filter to only projects from user's teams
+      const userTeamIds = teams.map(t => t.id);
+      const userProjects = allProjects.filter((p: Project) => userTeamIds.includes(p.team_id));
+
+      setProjects(userProjects);
     } catch (err: unknown) {
       console.error(`Failed to fetch projects: ${err instanceof Error ? err.message : String(err)}`);
+      setProjects([]);
     }
-  }, [selectedTeam]);
+  }, [teams]);
 
   // Fetch tasks from backend
   const fetchTeamTasks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch("tasks/readTasks");
+      const data = await apiFetch(API_ENDPOINTS.TASKS.READ);
       const tasksData = data.tasks || [];
 
       // Transform tasks to include parent/subtask information
@@ -117,6 +128,7 @@ const TeamView = () => {
         project_name: task.project_name,
       }));
 
+      // Don't filter by assignee - show ALL tasks (will be filtered by user's projects later)
       setTasks(transformedTasks);
       setFilteredTasks(transformedTasks);
     } catch (err: unknown) {
@@ -129,7 +141,7 @@ const TeamView = () => {
   // Fetch team members
   const fetchTeamMembers = useCallback(async () => {
     try {
-      const data = await apiFetch("auth/users");
+      const data = await apiFetch(API_ENDPOINTS.AUTH.USERS);
       setTeamMembers(data.users || []);
     } catch (err: unknown) {
       console.error(`Failed to fetch team members: ${err instanceof Error ? err.message : String(err)}`);
@@ -140,11 +152,9 @@ const TeamView = () => {
   useEffect(() => {
     let filtered = [...tasks];
 
-    // Filter by team
-    if (selectedTeam !== '' && selectedTeam !== 'all') {
-      const teamProjects = projects.filter(p => p.team_id === selectedTeam).map(p => p.id);
-      filtered = filtered.filter(task => teamProjects.includes(task.project_id || ''));
-    }
+    // Filter to only show tasks from projects in user's teams
+    const userProjectIds = projects.map(p => p.id);
+    filtered = filtered.filter(task => userProjectIds.includes(task.project_id || ''));
 
     // Filter by project
     if (selectedProject !== 'all') {
@@ -228,8 +238,21 @@ const TeamView = () => {
   const stats = getTaskStats();
 
   // Get priority and status colors
-  const getPriorityColor = (priority: string | undefined): string => {
-    switch (priority?.toUpperCase()) {
+  const getPriorityLabel = (priority: string | number | undefined): string => {
+    if (typeof priority === 'number') {
+      switch (priority) {
+        case 1: return 'LOW';
+        case 2: return 'MEDIUM';
+        case 3: return 'HIGH';
+        default: return 'UNKNOWN';
+      }
+    }
+    return (priority || 'UNKNOWN').toString().toUpperCase();
+  };
+
+  const getPriorityColor = (priority: string | number | undefined): string => {
+    const label = getPriorityLabel(priority);
+    switch (label) {
       case 'HIGH': return 'text-red-600 bg-red-100';
       case 'MEDIUM': return 'text-yellow-600 bg-yellow-100';
       case 'LOW': return 'text-green-600 bg-green-100';
@@ -277,6 +300,30 @@ const TeamView = () => {
     });
   };
 
+  const toggleTeamExpansion = (teamId: string) => {
+    setExpandedTeams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teamId)) {
+        newSet.delete(teamId);
+      } else {
+        newSet.add(teamId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleProjectExpansion = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="mb-8">
@@ -318,66 +365,86 @@ const TeamView = () => {
         </div>
       )}
 
-      {/* Teams List */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
-        <div className="flex items-center mb-4">
-          <Users className="w-5 h-5 text-gray-600 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-900">My Projects</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {teams.length === 0 ? (
-            <div className="col-span-3 text-center py-8 text-gray-500">
-              {loading ? 'Loading projects...' : 'You are not assigned to any projects yet.'}
-            </div>
-          ) : (
-            teams.map(team => (
-              <div
-                key={team.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  selectedTeam === team.id
-                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow'
-                }`}
-                onClick={() => setSelectedTeam(team.id)}
-              >
-                <h3 className="font-semibold text-gray-900">{team.name}</h3>
-                {team.member_count !== undefined && (
-                  <p className="text-sm text-gray-600 mt-2">{team.member_count} members</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  {projects.filter(p => p.team_id === team.id).length} projects
-                </p>
+      {/* Teams List - Hidden for Staff */}
+      {userInfo?.role?.toLowerCase() !== 'staff' && (
+        <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
+          <div className="flex items-center mb-4">
+            <Users className="w-5 h-5 text-gray-600 mr-2" />
+            <h2 className="text-lg font-semibold text-gray-900">My Teams</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {teams.length === 0 ? (
+              <div className="col-span-3 text-center py-8 text-gray-500">
+                {loading ? 'Loading projects...' : 'You are not assigned to any projects yet.'}
               </div>
-            ))
-          )}
+            ) : (
+              teams.map(team => (
+                <div
+                  key={team.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    selectedTeam === team.id
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow'
+                  }`}
+                  onClick={() => setSelectedTeam(team.id)}
+                >
+                  <h3 className="font-semibold text-gray-900">{team.name}</h3>
+                  {team.member_count !== undefined && (
+                    <p className="text-sm text-gray-600 mt-2">{team.member_count} members</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {projects.filter(p => p.team_id === team.id).length} projects
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-          <div className="text-sm text-gray-600">Total</div>
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-1">
+            <Folder className="w-5 h-5 text-gray-500" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+          <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Tasks</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
-          <div className="text-sm text-gray-600">Done</div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg shadow-sm border border-green-200">
+          <div className="flex items-center justify-between mb-1">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="text-3xl font-bold text-green-700">{stats.completed}</div>
+          <div className="text-xs font-medium text-green-700 uppercase tracking-wide">Completed</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-          <div className="text-sm text-gray-600">Active</div>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg shadow-sm border border-blue-200">
+          <div className="flex items-center justify-between mb-1">
+            <Clock className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="text-3xl font-bold text-blue-700">{stats.inProgress}</div>
+          <div className="text-xs font-medium text-blue-700 uppercase tracking-wide">In Progress</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-gray-600">{stats.pending}</div>
-          <div className="text-sm text-gray-600">Pending</div>
+        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg shadow-sm border border-yellow-200">
+          <div className="flex items-center justify-between mb-1">
+            <Clock className="w-5 h-5 text-yellow-600" />
+          </div>
+          <div className="text-3xl font-bold text-yellow-700">{stats.pending}</div>
+          <div className="text-xs font-medium text-yellow-700 uppercase tracking-wide">To Do</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-orange-600">{stats.blocked}</div>
-          <div className="text-sm text-gray-600">Blocked</div>
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg shadow-sm border border-orange-200">
+          <div className="flex items-center justify-between mb-1">
+            <XCircle className="w-5 h-5 text-orange-600" />
+          </div>
+          <div className="text-3xl font-bold text-orange-700">{stats.blocked}</div>
+          <div className="text-xs font-medium text-orange-700 uppercase tracking-wide">Blocked</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
-          <div className="text-sm text-gray-600">Overdue</div>
+        <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg shadow-sm border border-red-200">
+          <div className="flex items-center justify-between mb-1">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+          </div>
+          <div className="text-3xl font-bold text-red-700">{stats.overdue}</div>
+          <div className="text-xs font-medium text-red-700 uppercase tracking-wide">Overdue</div>
         </div>
       </div>
 
@@ -486,142 +553,226 @@ const TeamView = () => {
         </div>
       )}
 
-      {/* Tasks List */}
+      {/* Hierarchical Team → Project → Task → Subtask View */}
       {!loading && (
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Tasks ({filteredTasks.filter(t => !t.isSubtask).length})
-            </h2>
-          </div>
-          <div className="divide-y">
-            {filteredTasks.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                No tasks found matching the selected filters.
-              </div>
-            ) : (
-              filteredTasks
-                .filter(task => !task.isSubtask)
-                .map((task) => {
-                  const subtasks = filteredTasks.filter(t => t.isSubtask && t.parent_id === task.id);
-                  const isExpanded = expandedTasks.has(task.id);
+        <div className="space-y-4">
+          {projects.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center text-gray-500">
+              No projects found.
+            </div>
+          ) : (
+            // Show only user's teams
+            teams.map((team) => {
+              const teamProjects = projects.filter(p => p.team_id === team.id);
 
-                  return (
-                    <div key={task.id}>
-                      {/* Parent Task */}
-                      <div className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              {task.project_name && (
-                                <span className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                  <Folder className="w-3 h-3 mr-1" />
-                                  {task.project_name}
-                                </span>
-                              )}
-                              {subtasks.length > 0 && (
-                                <button
-                                  onClick={() => toggleTaskExpansion(task.id)}
-                                  className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-3 h-3 mr-1" />
-                                  ) : (
-                                    <ChevronRight className="w-3 h-3 mr-1" />
-                                  )}
-                                  {subtasks.filter(st => st.status === 'COMPLETED').length}/{subtasks.length} subtasks
-                                </button>
-                              )}
-                            </div>
-                            <h3 className="text-base font-semibold text-gray-900 mb-1">
-                              {task.title}
-                            </h3>
-                            {task.description && (
-                              <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                                {getStatusIcon(task.status)}
-                                <span className="ml-1">{task.status?.replace('_', ' ')}</span>
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                {task.priority}
-                              </span>
-                              {task.due_date && (
-                                <span className={`flex items-center text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  {new Date(task.due_date).toLocaleDateString()}
-                                  {isOverdue(task.due_date, task.status) && ' (Overdue)'}
-                                </span>
-                              )}
-                              {task.assignee_ids && task.assignee_ids.length > 0 && (
-                                <span className="flex items-center text-xs text-gray-600">
-                                  <User className="w-3 h-3 mr-1" />
-                                  {task.assignee_ids.map(id => {
-                                    const member = teamMembers.find(m => m.id === id);
-                                    return member?.username || member?.email?.split('@')[0] || 'Unknown';
-                                  }).join(', ')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+              // Skip teams with no projects
+              if (teamProjects.length === 0) {
+                return null;
+              }
+
+              const isTeamExpanded = expandedTeams.has(team.id);
+
+              return (
+                <div key={team.id} className="bg-white rounded-lg shadow-sm border">
+                  {/* Team Header */}
+                  <div
+                    className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b cursor-pointer hover:from-blue-100 hover:to-blue-150 transition-colors"
+                    onClick={() => toggleTeamExpansion(team.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {isTeamExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-blue-600" />
+                        )}
+                        <Users className="w-5 h-5 text-blue-600" />
+                        <h2 className="text-lg font-bold text-gray-900">{team.name}</h2>
                       </div>
+                      <div className="flex items-center space-x-4 text-sm">
+                        <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full font-medium">
+                          {teamProjects.length} {teamProjects.length === 1 ? 'Project' : 'Projects'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                      {/* Subtasks - Collapsible */}
-                      {subtasks.length > 0 && isExpanded && (
-                        <div className="bg-gray-50 border-l-4 border-purple-200">
-                          {subtasks.map((subtask) => (
-                            <div key={subtask.id} className="p-4 pl-8 hover:bg-gray-100 transition-colors border-t border-gray-200">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded font-medium">
-                                      Subtask
-                                    </span>
+                  {/* Team Projects */}
+                  {isTeamExpanded && (
+                    <div className="divide-y">
+                      {teamProjects.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                          No projects in this team yet.
+                        </div>
+                      ) : (
+                        teamProjects.map((project) => {
+                          const projectTasks = filteredTasks.filter(t => t.project_id === project.id && !t.isSubtask);
+                          const isProjectExpanded = expandedProjects.has(project.id);
+                          const completedTasks = projectTasks.filter(t => t.status === 'COMPLETED').length;
+
+                          return (
+                            <div key={project.id} className="bg-gray-50">
+                              {/* Project Header */}
+                              <div
+                                className="p-4 pl-12 cursor-pointer hover:bg-gray-100 transition-colors"
+                                onClick={() => toggleProjectExpansion(project.id)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    {isProjectExpanded ? (
+                                      <ChevronDown className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4 text-green-600" />
+                                    )}
+                                    <Folder className="w-4 h-4 text-green-600" />
+                                    <div>
+                                      <h3 className="text-base font-semibold text-gray-900">{project.name}</h3>
+                                      {project.description && (
+                                        <p className="text-xs text-gray-600 mt-1">{project.description}</p>
+                                      )}
+                                    </div>
                                   </div>
-                                  <h3 className="text-base font-medium text-gray-900 mb-1">
-                                    {subtask.title}
-                                  </h3>
-                                  {subtask.description && (
-                                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{subtask.description}</p>
-                                  )}
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
-                                      {getStatusIcon(subtask.status)}
-                                      <span className="ml-1">{subtask.status?.replace('_', ' ')}</span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                                      {completedTasks}/{projectTasks.length} Tasks
                                     </span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
-                                      {subtask.priority}
-                                    </span>
-                                    {subtask.due_date && (
-                                      <span className={`flex items-center text-xs ${isOverdue(subtask.due_date, subtask.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                        <Calendar className="w-3 h-3 mr-1" />
-                                        {new Date(subtask.due_date).toLocaleDateString()}
-                                        {isOverdue(subtask.due_date, subtask.status) && ' (Overdue)'}
-                                      </span>
-                                    )}
-                                    {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
-                                      <span className="flex items-center text-xs text-gray-600">
-                                        <User className="w-3 h-3 mr-1" />
-                                        {subtask.assignee_ids.map(id => {
-                                          const member = teamMembers.find(m => m.id === id);
-                                          return member?.username || member?.email?.split('@')[0] || 'Unknown';
-                                        }).join(', ')}
-                                      </span>
-                                    )}
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Project Tasks */}
+                              {isProjectExpanded && (
+                                <div className="bg-white divide-y">
+                                  {projectTasks.length === 0 ? (
+                                    <div className="p-8 pl-20 text-center text-gray-500">
+                                      No tasks in this project yet.
+                                    </div>
+                                  ) : (
+                                    projectTasks.map((task) => {
+                                      const subtasks = filteredTasks.filter(t => t.isSubtask && t.parent_id === task.id);
+                                      const isTaskExpanded = expandedTasks.has(task.id);
+
+                                      return (
+                                        <div key={task.id}>
+                                          {/* Task */}
+                                          <div className="p-4 pl-20 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="flex items-center space-x-2 mb-2">
+                                                  {subtasks.length > 0 && (
+                                                    <button
+                                                      onClick={() => toggleTaskExpansion(task.id)}
+                                                      className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors"
+                                                    >
+                                                      {isTaskExpanded ? (
+                                                        <ChevronDown className="w-3 h-3 mr-1" />
+                                                      ) : (
+                                                        <ChevronRight className="w-3 h-3 mr-1" />
+                                                      )}
+                                                      {subtasks.filter(st => st.status === 'COMPLETED').length}/{subtasks.length} subtasks
+                                                    </button>
+                                                  )}
+                                                </div>
+                                                <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                                  {task.title}
+                                                </h4>
+                                                {task.description && (
+                                                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                                                )}
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                                                    {getStatusIcon(task.status)}
+                                                    <span className="ml-1">{task.status?.replace('_', ' ')}</span>
+                                                  </span>
+                                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                                    {getPriorityLabel(task.priority)}
+                                                  </span>
+                                                  {task.due_date && (
+                                                    <span className={`flex items-center text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                                      <Calendar className="w-3 h-3 mr-1" />
+                                                      {new Date(task.due_date).toLocaleDateString()}
+                                                      {isOverdue(task.due_date, task.status) && ' (Overdue)'}
+                                                    </span>
+                                                  )}
+                                                  {task.assignee_ids && task.assignee_ids.length > 0 && (
+                                                    <span className="flex items-center text-xs text-gray-600">
+                                                      <User className="w-3 h-3 mr-1" />
+                                                      {task.assignee_ids.map(id => {
+                                                        const member = teamMembers.find(m => m.id === id);
+                                                        return member?.username || member?.email?.split('@')[0] || 'Unknown';
+                                                      }).join(', ')}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {/* Subtasks */}
+                                          {subtasks.length > 0 && isTaskExpanded && (
+                                            <div className="bg-purple-50 border-l-4 border-purple-300">
+                                              {subtasks.map((subtask) => (
+                                                <div key={subtask.id} className="p-3 pl-28 hover:bg-purple-100 transition-colors border-t border-purple-200">
+                                                  <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                      <div className="flex items-center space-x-2 mb-1">
+                                                        <span className="text-xs text-purple-700 bg-purple-200 px-2 py-0.5 rounded font-medium">
+                                                          Subtask
+                                                        </span>
+                                                      </div>
+                                                      <h5 className="text-sm font-medium text-gray-900 mb-1">
+                                                        {subtask.title}
+                                                      </h5>
+                                                      {subtask.description && (
+                                                        <p className="text-xs text-gray-600 mb-2 line-clamp-1">{subtask.description}</p>
+                                                      )}
+                                                      <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
+                                                          {getStatusIcon(subtask.status)}
+                                                          <span className="ml-1">{subtask.status?.replace('_', ' ')}</span>
+                                                        </span>
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
+                                                          {getPriorityLabel(subtask.priority)}
+                                                        </span>
+                                                        {subtask.due_date && (
+                                                          <span className={`flex items-center text-xs ${isOverdue(subtask.due_date, subtask.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                                            <Calendar className="w-3 h-3 mr-1" />
+                                                            {new Date(subtask.due_date).toLocaleDateString()}
+                                                            {isOverdue(subtask.due_date, subtask.status) && ' (Overdue)'}
+                                                          </span>
+                                                        )}
+                                                        {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
+                                                          <span className="flex items-center text-xs text-gray-600">
+                                                            <User className="w-3 h-3 mr-1" />
+                                                            {subtask.assignee_ids.map(id => {
+                                                              const member = teamMembers.find(m => m.id === id);
+                                                              return member?.username || member?.email?.split('@')[0] || 'Unknown';
+                                                            }).join(', ')}
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })
                       )}
                     </div>
-                  );
-                })
-            )}
-          </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </div>

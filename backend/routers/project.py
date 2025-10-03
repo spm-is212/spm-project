@@ -52,7 +52,14 @@ def list_projects(team_id: Optional[str] = None, user: dict = Depends(get_curren
             projects = crud.client.table("projects").select("*").execute()
 
         return projects.data or []
+    except ConnectionError as e:
+        print(f"Database connection error: {str(e)}")
+        raise HTTPException(status_code=503, detail="Database connection unavailable. Please try again.")
+    except TimeoutError as e:
+        print(f"Database timeout error: {str(e)}")
+        raise HTTPException(status_code=504, detail="Database request timed out. Please try again.")
     except Exception as e:
+        print(f"Unexpected error in list_projects: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 

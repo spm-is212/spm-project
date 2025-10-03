@@ -10,7 +10,7 @@ def get_my_teams(user: dict = Depends(get_current_user)):
     try:
         user_teams = user.get("teams", [])
 
-        if not user_teams:
+        if not user_teams or len(user_teams) == 0:
             return {"teams": []}
 
         crud = SupabaseCRUD()
@@ -20,12 +20,9 @@ def get_my_teams(user: dict = Depends(get_current_user)):
 
         return {"teams": result.data or []}
     except Exception as e:
-        # Fallback to dummy data if teams table doesn't exist
+        # Log error and return empty array instead of dummy data
         print(f"Teams table error: {str(e)}")
-        return {"teams": [
-            {"id": "team1", "name": "Team A", "member_count": 0},
-            {"id": "team2", "name": "Team B", "member_count": 0}
-        ]}
+        return {"teams": []}
 
 @router.get("/team-tasks")
 def get_team_tasks(user: dict = Depends(get_current_user)):
