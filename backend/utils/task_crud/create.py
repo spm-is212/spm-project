@@ -40,7 +40,6 @@ class TaskCreator:
         main_task_dict = {
             TITLE_FIELD: main_task.title,
             DESCRIPTION_FIELD: main_task.description,
-            "project_id": main_task.project_id,
             DUE_DATE_FIELD: main_task.due_date.isoformat(),
             STATUS_FIELD: main_task.status.value,
             PRIORITY_FIELD: main_task.priority.value,
@@ -54,6 +53,10 @@ class TaskCreator:
             "recurrence_interval": main_task.recurrence_interval,
             "recurrence_end_date": main_task.recurrence_end_date.isoformat() if main_task.recurrence_end_date else None,
         }
+
+        # Only include project_id if provided
+        if main_task.project_id is not None:
+            main_task_dict["project_id"] = main_task.project_id
 
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
 
@@ -71,7 +74,6 @@ class TaskCreator:
                 subtask_dict = {
                     TITLE_FIELD: subtask_data.title,
                     DESCRIPTION_FIELD: subtask_data.description,
-                    "project_id": subtask_data.project_id,
                     DUE_DATE_FIELD: subtask_data.due_date.isoformat(),
                     STATUS_FIELD: subtask_data.status.value,
                     PRIORITY_FIELD: subtask_data.priority.value,
@@ -86,6 +88,10 @@ class TaskCreator:
                     "recurrence_end_date": subtask_data.recurrence_end_date.isoformat() if subtask_data.recurrence_end_date else None,
 
                 }
+
+                # Only include project_id if provided
+                if subtask_data.project_id is not None:
+                    subtask_dict["project_id"] = subtask_data.project_id
 
                 created_subtask = self.crud.insert(self.table_name, subtask_dict)
                 result[SUBTASKS_RESPONSE_KEY].append(created_subtask)

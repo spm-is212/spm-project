@@ -28,7 +28,7 @@ class TaskPriority(str, Enum):
 class TaskCreate(BaseModel):
     title: str
     description: str
-    project_id: str = Field(..., description="REQUIRED: Project ID that this task belongs to")
+    project_id: Optional[str] = None
     due_date: date
     status: TaskStatus = TaskStatus.TO_DO
     priority: TaskPriority
@@ -86,7 +86,7 @@ class TaskCreate(BaseModel):
 class SubtaskCreate(BaseModel):
     title: str
     description: str
-    project_id: str = Field(..., description="REQUIRED: Project ID that this subtask belongs to")
+    project_id: Optional[str] = None
     due_date: date
     status: TaskStatus = TaskStatus.TO_DO
     priority: TaskPriority
