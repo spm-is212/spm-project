@@ -1,13 +1,13 @@
 from backend.tests.task_test.conftest import client
 
 
-def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_testing):
+def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_testing, test_project):
     """Test creating task with exactly 5 assignees succeeds"""
     payload = {
         "main_task": {
             "title": "Test Task",
             "description": "Test Description",
-            "due_date": "2025-10-01",
+            "due_date": "2025-12-01",
             "status": "TO_DO",
             "priority": "MEDIUM",
             "assignee_ids": [
@@ -29,13 +29,13 @@ def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_t
     assert response.status_code == 200
 
 
-def test_create_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing):
+def test_create_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing, test_project):
     """Test creating task with 6 assignees fails validation"""
     payload = {
         "main_task": {
             "title": "Test Task",
             "description": "Test Description",
-            "due_date": "2025-10-01",
+            "due_date": "2025-12-01",
             "status": "TO_DO",
             "priority": "MEDIUM",
             "assignee_ids": [
@@ -59,13 +59,13 @@ def test_create_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing
     assert "Maximum of 5 assignees allowed per task" in response.json()["detail"][0]["msg"]
 
 
-def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_testing):
+def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_testing, test_project):
     """Test creating subtask with 6 assignees fails validation"""
     payload = {
         "main_task": {
             "title": "Test Task",
             "description": "Test Description",
-            "due_date": "2025-10-01",
+            "due_date": "2025-12-01",
             "status": "TO_DO",
             "priority": "MEDIUM",
             "assignee_ids": [
@@ -77,7 +77,7 @@ def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_test
             {
                 "title": "Test Subtask",
                 "description": "Test Description",
-                "due_date": "2025-10-01",
+                "due_date": "2025-12-01",
                 "status": "TO_DO",
                 "priority": "MEDIUM",
                 "assignee_ids": [

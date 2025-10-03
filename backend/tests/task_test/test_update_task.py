@@ -1,7 +1,7 @@
 from backend.tests.task_test.conftest import client
 
 
-def test_update_main_task_success(auth_headers, patch_crud_for_testing):
+def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_project):
     """Test updating a main task successfully"""
     # Create a task first
     create_payload = {
@@ -54,7 +54,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing):
     assert data["main_task"]["parent_id"] is None  # Should remain None
 
 
-def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing):
+def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing, test_project):
     """Test that managers can add and remove assignees"""
     # Create a task with multiple assignees through API
     payload = {
@@ -97,7 +97,7 @@ def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing):
     assert "00000000-0000-0000-0000-000000000001" in data["main_task"]["assignee_ids"]
 
 
-def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_for_testing):
+def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_for_testing, test_project):
     """Test that staff can add assignees but not remove them"""
     # Create a task with one assignee through API
     payload = {
