@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield } from 'lucide-react';
-import LogoutButton from '../../components/auth/logoutbtn';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import type { Task, NewTask, NewSubtask, User as UserType, TaskPriority } from '../../types/Task';
 
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  team_id: string;
+}
 
 const TaskManager = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -14,11 +19,13 @@ const TaskManager = () => {
   const [editingAssignees, setEditingAssignees] = useState<string[]>([]);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [users, setUsers] = useState<UserType[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState<NewTask>({
     title: '',
     description: '',
+    project_id: '',
     status: 'TO_DO',
     priority: 'MEDIUM',
     due_date: '',
@@ -32,6 +39,7 @@ const TaskManager = () => {
   const [newSubtask, setNewSubtask] = useState<NewSubtask>({
     title: '',
     description: '',
+    project_id: '',
     status: 'TO_DO',
     priority: 'MEDIUM',
     due_date: '',
@@ -60,6 +68,16 @@ const TaskManager = () => {
       }
     }
   }, []);
+
+// fetch projects
+const fetchProjects = useCallback(async () => {
+  try {
+    const data = await apiFetch("projects/list");
+    setProjects(data || []);
+  } catch (err: unknown) {
+    console.error(`Failed to fetch projects: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}, []);
 
 // fetch tasks
 const fetchTasks = useCallback(async () => {
@@ -111,6 +129,7 @@ function getUserIdFromToken(): string | null {
 function validateTask(task: NewTask, assignees: string[], currentUserId: string | null): string | null {
   if (!task.title.trim()) return "Task title is required";
   if (!task.description.trim()) return "Task description is required";
+  if (!task.project_id) return "Project selection is required";
 
   const allowedStatuses = ["TO_DO", "IN_PROGRESS", "COMPLETED", "BLOCKED"];
   if (!allowedStatuses.includes(task.status.toUpperCase())) {
@@ -136,7 +155,7 @@ function validateTask(task: NewTask, assignees: string[], currentUserId: string 
     return "At least one assignee is required";
   }
 
-  return null; 
+  return null;
 }
 
 // fetch users from current user's department
@@ -211,6 +230,7 @@ const createTask = async (taskData: NewTask): Promise<void> => {
     const formattedSubtasks = subtasks.map(subtask => ({
       title: subtask.title,
       description: subtask.description,
+      project_id: subtask.project_id,
       due_date: subtask.due_date,
       priority: subtask.priority,
       assignee_ids: userId ? [userId] : []
@@ -222,6 +242,7 @@ const createTask = async (taskData: NewTask): Promise<void> => {
       main_task: {
         title: taskData.title,
         description: taskData.description,
+        project_id: taskData.project_id,
         due_date: taskData.due_date,
         priority: taskData.priority,
         assignee_ids: mainTaskAssignees,
@@ -239,7 +260,7 @@ const createTask = async (taskData: NewTask): Promise<void> => {
 
     await fetchTasks();
     setShowAddForm(false);
-    setNewTask({ title: "", description: "", status: "TO_DO", priority: "MEDIUM", due_date: "", comments: "" });
+    setNewTask({ title: "", description: "", project_id: "", status: "TO_DO", priority: "MEDIUM", due_date: "", comments: "" });
     setSubtasks([]);
     setShowSubtaskForm(false);
 
@@ -426,7 +447,8 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
     document.title = "Your task manager";
     fetchTasks();
     fetchUsers();
-  }, [fetchTasks, fetchUsers]);
+    fetchProjects();
+  }, [fetchTasks, fetchUsers, fetchProjects]);
 
   // Subtask management functions
   const addSubtask = () => {
@@ -445,8 +467,10 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       }
     }
 
-    setSubtasks([...subtasks, { ...newSubtask, id: Date.now().toString() }]);
-    setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 'MEDIUM', due_date: '', comments: '' });
+    // Auto-populate project_id from main task
+    const subtaskWithProject = { ...newSubtask, project_id: newTask.project_id, id: Date.now().toString() };
+    setSubtasks([...subtasks, subtaskWithProject]);
+    setNewSubtask({ title: '', description: '', project_id: '', status: 'TO_DO', priority: 'MEDIUM', due_date: '', comments: '' });
     setShowSubtaskForm(false);
   };
 
@@ -610,7 +634,6 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       <div className="mb-8">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h1 className="text-3xl font-bold text-gray-900">Smart Task Manager</h1>
-          <LogoutButton />
         </div>
         <p className="text-gray-600">Manage your tasks efficiently with full CRUD operations</p>
 
@@ -672,6 +695,22 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                   placeholder="Enter task title"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Project *</label>
+                <select
+                  value={newTask.project_id}
+                  onChange={(e) => setNewTask({...newTask, project_id: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select a project...</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

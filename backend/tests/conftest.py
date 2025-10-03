@@ -22,6 +22,22 @@ def setup_test_environment():
         print("Test tables not found. Run: npx supabase db push")
         raise e
 
+    # Create default test project if it doesn't exist (in the real projects table, not test)
+    try:
+        default_project = {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "name": "Default Test Project",
+            "description": "Default project for tests",
+            "team_id": "00000000-0000-0000-0000-000000000000"  # Use same UUID for team_id
+        }
+        # Insert directly into projects table (not projects_test since it doesn't exist)
+        # The tasks table has FK to projects, not projects_test
+        # Use insert with on_conflict to handle if it already exists
+        crud.client.table("projects").insert(default_project, upsert=True).execute()
+        print("Default test project created/verified in projects table")
+    except Exception as e:
+        print(f"Warning: Could not create default test project: {e}")
+
     yield
 
     # Session cleanup - remove all test data

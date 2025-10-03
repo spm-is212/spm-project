@@ -31,6 +31,7 @@ export interface Task {
     id: string;
     title: string;
     description: string;
+    project_id: string;
     due_date?: string;
     status: TaskStatus;
     priority: TaskPriority;
@@ -46,6 +47,7 @@ export interface Task {
 export interface NewTask {
     title: string;
     description: string;
+    project_id: string;
     status: TaskStatus;
     priority: TaskPriority;
     due_date: string;
@@ -55,6 +57,7 @@ export interface NewTask {
 export interface NewSubtask {
     title: string;
     description: string;
+    project_id: string;
     status: TaskStatus;
     priority: TaskPriority;
     due_date: string;
@@ -65,6 +68,7 @@ export interface TaskCreatePayload {
     main_task: {
         title: string;
         description: string;
+        project_id: string;
         due_date: string;
         priority: TaskPriority;
         assignee_ids: string[];
@@ -72,6 +76,7 @@ export interface TaskCreatePayload {
     subtasks: Array<{
         title: string;
         description: string;
+        project_id: string;
         due_date: string;
         priority: TaskPriority;
         assignee_ids: string[];

@@ -2,7 +2,7 @@ from backend.tests.task_test.conftest import client
 from backend.utils.task_crud.constants import make_future_due_date
 
 
-def test_create_main_task_only_success(auth_headers, sample_main_task, patch_crud_for_testing):
+def test_create_main_task_only_success(auth_headers, sample_main_task, patch_crud_for_testing, test_project):
     """Test creating only a main task without subtasks"""
     payload = {
         "main_task": sample_main_task
@@ -28,7 +28,7 @@ def test_create_main_task_only_success(auth_headers, sample_main_task, patch_cru
     assert len(data["subtasks"]) == 0
 
 
-def test_create_task_with_subtasks_success(auth_headers, sample_main_task, sample_subtasks, patch_crud_for_testing):
+def test_create_task_with_subtasks_success(auth_headers, sample_main_task, sample_subtasks, patch_crud_for_testing, test_project):
     """Test creating a main task with subtasks"""
     payload = {
         "main_task": sample_main_task,
@@ -56,7 +56,7 @@ def test_create_task_with_subtasks_success(auth_headers, sample_main_task, sampl
         assert subtask["owner_user_id"] == "00000000-0000-0000-0000-000000000001"
 
 
-def test_create_subtask_without_assignees(auth_headers, sample_main_task, patch_crud_for_testing):
+def test_create_subtask_without_assignees(auth_headers, sample_main_task, patch_crud_for_testing, test_project):
     """Test creating subtask without assignee_ids (should default to empty array)"""
     subtask_without_assignees = {
         "title": "Unassigned Subtask",
@@ -99,7 +99,7 @@ def test_create_task_without_auth_fails(sample_main_task):
     assert response.status_code == 403
 
 
-def test_create_task_main_task_parent_id_ignored(auth_headers, sample_main_task, patch_crud_for_testing):
+def test_create_task_main_task_parent_id_ignored(auth_headers, sample_main_task, patch_crud_for_testing, test_project):
     """Test that parent_id in main_task is ignored and set to None"""
     # Try to set parent_id for main task (should be ignored)
     sample_main_task["parent_id"] = "some-fake-parent-id"

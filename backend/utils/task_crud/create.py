@@ -53,6 +53,12 @@ class TaskCreator:
             "recurrence_interval": main_task.recurrence_interval,
             "recurrence_end_date": main_task.recurrence_end_date.isoformat() if main_task.recurrence_end_date else None,
         }
+        if main_task.project_id is not None:
+            main_task_dict["project_id"] = main_task.project_id
+
+        # Only include project_id if provided
+        if main_task.project_id is not None:
+            main_task_dict["project_id"] = main_task.project_id
 
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
 
@@ -84,6 +90,12 @@ class TaskCreator:
                     "recurrence_end_date": subtask_data.recurrence_end_date.isoformat() if subtask_data.recurrence_end_date else None,
 
                 }
+                if subtask_data.project_id is not None:
+                    subtask_dict["project_id"] = subtask_data.project_id
+
+                # Only include project_id if provided
+                if subtask_data.project_id is not None:
+                    subtask_dict["project_id"] = subtask_data.project_id
 
                 created_subtask = self.crud.insert(self.table_name, subtask_dict)
                 result[SUBTASKS_RESPONSE_KEY].append(created_subtask)

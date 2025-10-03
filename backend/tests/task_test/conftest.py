@@ -31,6 +31,30 @@ def staff_auth_headers():
 
 
 @pytest.fixture
+def test_project(patch_crud_for_testing):
+    """Create and cleanup a test project"""
+    crud = SupabaseCRUD()
+
+    # Create test project
+    project_data = {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "project_name": "Test Project",
+        "description": "Test project for integration tests",
+        "owner_uuid": "00000000-0000-0000-0000-000000000001",
+        "is_archived": False
+    }
+
+    try:
+        crud.insert("projects", project_data)
+    except Exception:
+        pass  # Project might already exist
+
+    yield project_data
+
+    # Cleanup handled by patch_crud_for_testing teardown
+
+
+@pytest.fixture
 def sample_main_task():
     """Sample main task data"""
     return {
@@ -115,6 +139,6 @@ def patch_crud_for_testing(monkeypatch):
     # Additional cleanup: ensure test tables are completely clear
     from backend.tests.utils.cleanup import clear_all_test_data
     try:
-        clear_all_test_data()
+        clear_all_test_data(['users', 'tasks', 'projects'])
     except Exception:
         pass  # Cleanup is optional
