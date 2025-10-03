@@ -1,4 +1,5 @@
 from backend.tests.task_test.conftest import client
+from backend.utils.task_crud.constants import make_future_due_date
 
 
 def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_testing, test_project):
@@ -7,7 +8,7 @@ def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_t
         "main_task": {
             "title": "Test Task",
             "description": "Test Description",
-            "due_date": "2025-12-01",
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "MEDIUM",
             "assignee_ids": [
@@ -35,7 +36,7 @@ def test_create_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing
         "main_task": {
             "title": "Test Task",
             "description": "Test Description",
-            "due_date": "2025-12-01",
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "MEDIUM",
             "assignee_ids": [
@@ -65,7 +66,7 @@ def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_test
         "main_task": {
             "title": "Test Task",
             "description": "Test Description",
-            "due_date": "2025-12-01",
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "MEDIUM",
             "assignee_ids": [
@@ -77,7 +78,7 @@ def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_test
             {
                 "title": "Test Subtask",
                 "description": "Test Description",
-                "due_date": "2025-12-01",
+                "due_date": make_future_due_date(),
                 "status": "TO_DO",
                 "priority": "MEDIUM",
                 "assignee_ids": [

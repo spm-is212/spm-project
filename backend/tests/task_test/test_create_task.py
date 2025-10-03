@@ -1,5 +1,5 @@
 from backend.tests.task_test.conftest import client
-from datetime import date, timedelta
+from backend.utils.task_crud.constants import make_future_due_date
 
 
 def test_create_main_task_only_success(auth_headers, sample_main_task, patch_crud_for_testing, test_project):
@@ -61,7 +61,7 @@ def test_create_subtask_without_assignees(auth_headers, sample_main_task, patch_
     subtask_without_assignees = {
         "title": "Unassigned Subtask",
         "description": "This subtask has no assignees",
-        "due_date": (date.today() + timedelta(days=5)).isoformat(),
+        "due_date": make_future_due_date(),
         "status": "TO_DO",
         "priority": "LOW"
     }

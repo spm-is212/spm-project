@@ -4,6 +4,7 @@ Task CRUD constants and configuration values.
 This module contains all hard-coded values used throughout the task CRUD operations
 to centralize configuration and improve maintainability.
 """
+from datetime import date, timedelta
 
 # Database table names
 TASKS_TABLE_NAME = "tasks"
@@ -49,3 +50,6 @@ SUBTASKS_RESPONSE_KEY = "subtasks"
 # Validation error messages
 TASK_ASSIGNEE_REQUIRED_ERROR = "Task must have at least one assignee"
 SUBTASK_ASSIGNEE_REQUIRED_ERROR = "Subtask must have at least one assignee"
+
+def make_future_due_date():
+    return (date.today() + timedelta(days=7)).isoformat()

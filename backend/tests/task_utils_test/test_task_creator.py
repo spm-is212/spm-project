@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from backend.utils.task_crud.create import TaskCreator
 from backend.schemas.task import TaskCreate, SubtaskCreate
-
+from backend.utils.task_crud.constants import make_future_due_date
 
 class TestTaskCreator:
     """Unit tests for TaskCreator class"""
@@ -132,7 +132,7 @@ class TestTaskCreator:
         subtask_data = {
             "title": "Unassigned Subtask",
             "description": "No assignees",
-            "due_date": future_date,  
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "LOW",
             "project_id": "proj-123"
