@@ -29,6 +29,5 @@ def get_my_teams(user: dict = Depends(get_current_user)):
 
 @router.get("/team-tasks")
 def get_team_tasks(user: dict = Depends(get_current_user)):
-    user_id = user["sub"]
-    user_teams = user.get("teams", [])
+    # TODO: Implement team tasks retrieval
     return {"tasks": []}
