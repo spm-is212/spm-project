@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 from datetime import date, timedelta
-
+from backend.utils.task_crud.constants import make_future_due_date
 
 @pytest.fixture
 def mock_crud():
@@ -47,7 +47,7 @@ def mock_task_in_db():
         "id": "test-task-id-123",
         "title": "Existing Task",
         "description": "Existing description",
-        "due_date": "2025-10-01",
+        "due_date": make_future_due_date(),
         "status": "TO_DO",
         "priority": "HIGH",
         "owner_user_id": "00000000-0000-0000-0000-000000000001",

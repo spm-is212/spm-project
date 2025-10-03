@@ -1,4 +1,5 @@
 from backend.tests.task_test.conftest import client
+from backend.utils.task_crud.constants import make_future_due_date
 
 
 def test_update_main_task_success(auth_headers, patch_crud_for_testing):
@@ -8,7 +9,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing):
         "main_task": {
             "title": "Test Task for Updates",
             "description": "A task created for testing updates",
-            "due_date": "2025-10-15",
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "HIGH",
             "assignee_ids": ["00000000-0000-0000-0000-000000000001"]
@@ -61,7 +62,7 @@ def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing):
         "main_task": {
             "title": "Task for Assignee Test",
             "description": "Testing assignee management",
-            "due_date": "2025-10-15",
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "HIGH",
             "assignee_ids": ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000003"]
@@ -104,7 +105,7 @@ def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_
         "main_task": {
             "title": "Task for Staff Test",
             "description": "Testing staff assignee permissions",
-            "due_date": "2025-10-15",
+            "due_date": make_future_due_date(),
             "status": "TO_DO",
             "priority": "HIGH",
             "assignee_ids": ["00000000-0000-0000-0000-000000000002"]
