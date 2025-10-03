@@ -40,6 +40,7 @@ class TaskCreator:
         main_task_dict = {
             TITLE_FIELD: main_task.title,
             DESCRIPTION_FIELD: main_task.description,
+            "project_id": main_task.project_id,
             DUE_DATE_FIELD: main_task.due_date.isoformat(),
             STATUS_FIELD: main_task.status.value,
             PRIORITY_FIELD: main_task.priority.value,
@@ -70,6 +71,7 @@ class TaskCreator:
                 subtask_dict = {
                     TITLE_FIELD: subtask_data.title,
                     DESCRIPTION_FIELD: subtask_data.description,
+                    "project_id": subtask_data.project_id,
                     DUE_DATE_FIELD: subtask_data.due_date.isoformat(),
                     STATUS_FIELD: subtask_data.status.value,
                     PRIORITY_FIELD: subtask_data.priority.value,

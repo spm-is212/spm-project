@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckSquare, Users, Menu, X, LogOut, CheckCircle } from 'lucide-react';
 
@@ -10,9 +10,23 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setIsOpen(false);
+      } else {
+        setIsOpen(true);
+      }
+    };
+
+    handleResize(); // set on initial load
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const navigation = [
     { name: 'Task Manager', href: '/taskmanager', icon: CheckSquare },
-    { name: 'Team', href: '/team', icon: Users },
+    { name: 'Projects', href: '/team', icon: Users },
   ];
 
   const handleLogout = async () => {
@@ -52,16 +66,24 @@ export default function Sidebar() {
         } bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div
+          className={`flex items-center ${
+            isOpen ? 'justify-between p-4' : 'justify-center py-6'
+          } border-b border-[#2C2C2E]`}
+        >
           {isOpen && (
             <div className="flex items-center gap-2">
-              <img src='../../../public/l1.svg' alt="Logo" className="h-8" />
-              <span className="font-semibold text-lg">ALL-IN-ONE</span>
+              <img src="/l1.svg" alt="Logo" className="h-8" />
+              <span className="font-semibold text-lg tracking-tight text-gray-100">
+                ALL-IN-ONE
+              </span>
             </div>
           )}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+            className={`p-2 rounded-lg hover:bg-[#2C2C2E] transition-colors ${
+              !isOpen ? 'mx-auto' : ''
+            }`}
           >
             {isOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
