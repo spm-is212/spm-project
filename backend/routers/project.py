@@ -10,17 +10,23 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 @router.post("/create", response_model=ProjectResponse, status_code=201)
 def create_project(project: ProjectCreate, user: dict = Depends(get_current_user)):
-    """Create a new project"""
+    """Create a new project with collaborators"""
     try:
         crud = SupabaseCRUD()
+        user_id = user["sub"]
 
         # Prepare project data
         project_data = {
             "name": project.name,
             "description": project.description,
-            "team_id": project.team_id,
+            "collaborator_ids": project.collaborator_ids,
+            "created_by": user_id,
             "created_at": datetime.utcnow().isoformat(),
         }
+
+        # Add team_id if provided (for backward compatibility)
+        if project.team_id:
+            project_data["team_id"] = project.team_id
 
         # Insert into database
         result = crud.client.table("projects").insert(project_data).execute()
@@ -36,22 +42,51 @@ def create_project(project: ProjectCreate, user: dict = Depends(get_current_user
 @router.get("/list", response_model=List[ProjectResponse])
 def list_projects(team_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     """
-    List all projects, optionally filtered by team_id
+    List projects where the user is a collaborator or has assigned tasks
 
     Args:
-        team_id: Optional team ID to filter projects
+        team_id: Optional team ID to filter projects (deprecated, for backward compatibility)
     """
     try:
         crud = SupabaseCRUD()
+        user_id = user["sub"]
+        user_role = user.get("role", "user")
 
-        if team_id:
-            # Filter by team_id
-            projects = crud.client.table("projects").select("*").eq("team_id", team_id).execute()
+        # Get all projects
+        projects = crud.client.table("projects").select("*").execute()
+
+        if not projects.data:
+            return []
+
+        # For directors/managing directors, return all projects
+        if user_role in ["director", "managing_director"]:
+            user_projects = projects.data
         else:
-            # Get all projects
-            projects = crud.client.table("projects").select("*").execute()
+            # Method 1: Filter by collaborator_ids
+            collaborator_projects = [
+                p for p in projects.data
+                if p.get("collaborator_ids") and user_id in p.get("collaborator_ids", [])
+            ]
 
-        return projects.data or []
+            # Method 2: Also include projects where user has tasks assigned
+            # Get all tasks where user is assignee or owner
+            tasks_result = crud.client.table("tasks").select("project_id").or_(
+                f"owner_user_id.eq.{user_id},assignee_ids.cs.{{{user_id}}}"
+            ).execute()
+
+            task_project_ids = set([t['project_id'] for t in tasks_result.data if t.get('project_id')])
+
+            # Combine both methods
+            user_project_ids = set([p['id'] for p in collaborator_projects])
+            user_project_ids.update(task_project_ids)
+
+            user_projects = [p for p in projects.data if p['id'] in user_project_ids]
+
+        # Optional: filter by team_id if provided (backward compatibility)
+        if team_id:
+            user_projects = [p for p in user_projects if p.get("team_id") == team_id]
+
+        return user_projects
     except ConnectionError as e:
         print(f"Database connection error: {str(e)}")
         raise HTTPException(status_code=503, detail="Database connection unavailable. Please try again.")
@@ -90,11 +125,19 @@ def update_project(
     """Update a project"""
     try:
         crud = SupabaseCRUD()
+        user_id = user["sub"]
 
         # Check if project exists
         existing = crud.client.table("projects").select("*").eq("id", project_id).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Project not found")
+
+        # Verify user is a collaborator or has permission to update
+        project_data = existing.data[0]
+        if user_id not in project_data.get("collaborator_ids", []):
+            # Allow directors/managing directors to update
+            if user.get("role") not in ["director", "managing_director"]:
+                raise HTTPException(status_code=403, detail="Only project collaborators can update the project")
 
         # Prepare update data (only include fields that are provided)
         update_data = {}
@@ -102,6 +145,8 @@ def update_project(
             update_data["name"] = project.name
         if project.description is not None:
             update_data["description"] = project.description
+        if project.collaborator_ids is not None:
+            update_data["collaborator_ids"] = project.collaborator_ids
         if project.team_id is not None:
             update_data["team_id"] = project.team_id
 

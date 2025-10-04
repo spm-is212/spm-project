@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Users, Building, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Users, Building, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import { API_ENDPOINTS } from '../../config/api';
@@ -9,8 +9,11 @@ interface Project {
   id: string;
   name: string;
   description?: string;
-  team_id: string;
+  collaborator_ids: string[];
+  team_id?: string; // Deprecated, for backward compatibility
+  created_by?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 interface TaskWithProject extends Omit<Task, 'owner_user_id' | 'is_archived'> {
@@ -44,24 +47,26 @@ const TeamView = () => {
 
   // Filters
   const [selectedTeam, setSelectedTeam] = useState<string>('');
-  const [selectedMember, setSelectedMember] = useState<string>('all');
-  const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('due_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const user = getUserFromToken();
+    console.log('[TeamView] User from token:', user);
     if (user) {
-      setUserInfo({
+      const userInfoData = {
         email: '', // Email not available from token
         role: user.role || '',
         department: user.department || '',
         department_id: user.department || '',
         user_id: user.id || ''
-      });
+      };
+      console.log('[TeamView] Setting userInfo:', userInfoData);
+      setUserInfo(userInfoData);
+    } else {
+      console.log('[TeamView] No user from token!');
     }
   }, []);
 
@@ -74,7 +79,7 @@ const TeamView = () => {
       const teamsData = data.teams || [];
 
       // Validate that we have proper team objects with UUIDs
-      const validTeams = teamsData.filter((team: any) =>
+      const validTeams = teamsData.filter((team: Team) =>
         team && typeof team === 'object' && team.id && team.name
       );
 
@@ -88,30 +93,22 @@ const TeamView = () => {
     }
   }, [selectedTeam]);
 
-  // Fetch projects for user's teams only
+  // Fetch all projects accessible to the user
   const fetchProjects = useCallback(async () => {
     try {
-      if (teams.length === 0) {
-        setProjects([]);
-        return;
-      }
-
-      // Fetch all projects, then filter to only user's teams
+      // Fetch all projects the user has access to
       const data = await apiFetch(API_ENDPOINTS.PROJECTS.LIST);
       const allProjects = data || [];
 
-      // Filter to only projects from user's teams
-      const userTeamIds = teams.map(t => t.id);
-      const userProjects = allProjects.filter((p: Project) => userTeamIds.includes(p.team_id));
-
-      setProjects(userProjects);
+      console.log('[TeamView] Fetched projects:', allProjects.length, allProjects);
+      setProjects(allProjects);
     } catch (err: unknown) {
       console.error(`Failed to fetch projects: ${err instanceof Error ? err.message : String(err)}`);
       setProjects([]);
     }
-  }, [teams]);
+  }, []);
 
-  // Fetch tasks from backend
+  // Fetch tasks from backend - returns tasks user has access to (as assignee or via role)
   const fetchTeamTasks = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -120,7 +117,7 @@ const TeamView = () => {
       const tasksData = data.tasks || [];
 
       // Transform tasks to include parent/subtask information
-      const transformedTasks: TaskWithProject[] = tasksData.map((task: any) => ({
+      const transformedTasks: TaskWithProject[] = tasksData.map((task: TaskWithProject) => ({
         ...task,
         isSubtask: task.parent_id !== null && task.parent_id !== undefined,
         parent_id: task.parent_id,
@@ -128,11 +125,13 @@ const TeamView = () => {
         project_name: task.project_name,
       }));
 
-      // Don't filter by assignee - show ALL tasks (will be filtered by user's projects later)
+      // Tasks are already filtered by backend access control:
+      // - Directors/Managing Directors: see all tasks in their scope
+      // - Regular users: see tasks where they are assignees
       setTasks(transformedTasks);
       setFilteredTasks(transformedTasks);
     } catch (err: unknown) {
-      setError(`Failed to fetch team tasks: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Failed to fetch tasks: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -148,52 +147,41 @@ const TeamView = () => {
     }
   }, []);
 
-  // Apply filters and sorting
+  // Apply sorting only (no filtering)
   useEffect(() => {
-    let filtered = [...tasks];
-
-    // Filter to only show tasks from projects in user's teams
-    const userProjectIds = projects.map(p => p.id);
-    filtered = filtered.filter(task => userProjectIds.includes(task.project_id || ''));
-
-    // Filter by project
-    if (selectedProject !== 'all') {
-      filtered = filtered.filter(task => task.project_id === selectedProject);
-    }
-
-    // Filter by team member
-    if (selectedMember !== 'all') {
-      filtered = filtered.filter(task =>
-        task.assignee_ids && task.assignee_ids.includes(selectedMember)
-      );
-    }
-
-    // Filter by status
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(task => task.status === selectedStatus);
-    }
+    let sorted = [...tasks];
 
     // Sort tasks
-    filtered.sort((a, b) => {
+    const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+    sorted.sort((a, b) => {
+      let result = 0;
       switch (sortBy) {
-        case 'due_date':
+        case 'due_date': {
           if (!a.due_date) return 1;
           if (!b.due_date) return -1;
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-        case 'priority':
-          const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-          return (priorityOrder[a.priority?.toUpperCase()] || 3) - (priorityOrder[b.priority?.toUpperCase()] || 3);
-        case 'status':
-          return (a.status || '').localeCompare(b.status || '');
-        case 'title':
-          return a.title.localeCompare(b.title);
+          result = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          break;
+        }
+        case 'priority': {
+          result = (priorityOrder[a.priority?.toUpperCase()] || 3) - (priorityOrder[b.priority?.toUpperCase()] || 3);
+          break;
+        }
+        case 'status': {
+          result = (a.status || '').localeCompare(b.status || '');
+          break;
+        }
+        case 'title': {
+          result = a.title.localeCompare(b.title);
+          break;
+        }
         default:
           return 0;
       }
+      return sortOrder === 'asc' ? result : -result;
     });
 
-    setFilteredTasks(filtered);
-  }, [tasks, selectedTeam, selectedProject, selectedMember, selectedStatus, sortBy, projects]);
+    setFilteredTasks(sorted);
+  }, [tasks, sortBy, sortOrder]);
 
   // Load data on mount
   useEffect(() => {
@@ -201,17 +189,69 @@ const TeamView = () => {
     fetchTeams();
     fetchTeamMembers();
     fetchTeamTasks();
-  }, [fetchTeams, fetchTeamMembers, fetchTeamTasks]);
-
-  // Reload projects when team changes
-  useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+  }, [fetchTeams, fetchTeamMembers, fetchTeamTasks, fetchProjects]);
 
-  // Get filtered projects based on selected team
-  const getFilteredProjects = () => {
-    if (selectedTeam === '' || selectedTeam === 'all') return projects;
-    return projects.filter(p => p.team_id === selectedTeam);
+  // Get projects where current user is a collaborator or has tasks assigned
+  const getUserCollaboratorProjects = () => {
+    if (!userInfo?.user_id) {
+      console.log('[TeamView] No user_id, returning empty projects');
+      return [];
+    }
+
+    const userId = userInfo.user_id;
+    const userRole = userInfo.role?.toLowerCase();
+
+    console.log('[TeamView] getUserCollaboratorProjects - userId:', userId, 'role:', userRole, 'total projects:', projects.length);
+
+    // Directors and Managing Directors see ALL projects (backend already filtered)
+    if (userRole === 'director' || userRole === 'managing_director') {
+      console.log('[TeamView] Director/MD - returning all projects:', projects.length);
+      return projects;
+    }
+
+    // Method 1: Check if user is in collaborator_ids (primary method)
+    const directCollaboratorProjects = projects.filter(p =>
+      p.collaborator_ids && p.collaborator_ids.includes(userId)
+    );
+    console.log('[TeamView] Direct collaborator projects:', directCollaboratorProjects.length);
+
+    // Method 2: Also include projects where user has tasks (fallback/additional)
+    const userTaskProjectIds = new Set<string>();
+    tasks.forEach(task => {
+      // Check if user is owner or assignee
+      const isUserTask = task.owner_user_id === userId ||
+                        task.assignee_ids?.includes(userId);
+      if (isUserTask && task.project_id) {
+        userTaskProjectIds.add(task.project_id);
+      }
+    });
+    console.log('[TeamView] Task-based project IDs:', userTaskProjectIds.size);
+
+    // Combine both methods and remove duplicates
+    const allCollaboratorProjectIds = new Set([
+      ...directCollaboratorProjects.map(p => p.id),
+      ...userTaskProjectIds
+    ]);
+
+    const result = projects.filter(p => allCollaboratorProjectIds.has(p.id));
+    console.log('[TeamView] Final user projects:', result.length);
+    return result;
+  };
+
+  // Get team members who have tasks assigned in visible projects
+  const getActiveTeamMembers = () => {
+    const assigneeIds = new Set<string>();
+    const teamMemberIds = new Set(teamMembers.map(m => m.id));
+
+    tasks.forEach(task => {
+      task.assignee_ids?.forEach(id => {
+        if (teamMemberIds.has(id)) {
+          assigneeIds.add(id);
+        }
+      });
+    });
+    return teamMembers.filter(member => assigneeIds.has(member.id));
   };
 
   // Calculate task statistics
@@ -300,18 +340,6 @@ const TeamView = () => {
     });
   };
 
-  const toggleTeamExpansion = (teamId: string) => {
-    setExpandedTeams(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(teamId)) {
-        newSet.delete(teamId);
-      } else {
-        newSet.add(teamId);
-      }
-      return newSet;
-    });
-  };
-
   const toggleProjectExpansion = (projectId: string) => {
     setExpandedProjects(prev => {
       const newSet = new Set(prev);
@@ -338,9 +366,9 @@ const TeamView = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-green-600" />
+                <Folder className="w-5 h-5 text-green-600" />
                 <span className="text-gray-700">
-                  <strong>Projects:</strong> {teams.length}
+                  <strong>My Projects:</strong> {getUserCollaboratorProjects().length} {getUserCollaboratorProjects().length === 1 ? 'Project' : 'Projects'}
                 </span>
               </div>
               <span className="text-gray-700">
@@ -465,82 +493,39 @@ const TeamView = () => {
         </div>
       </div>
 
-      {/* Filters */}
+
+      {/* Sorting Only */}
       <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
         <div className="flex items-center mb-3">
           <Filter className="w-5 h-5 text-gray-600 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-900">Filters & Sorting</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Sorting</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Projects</option>
-              {getFilteredProjects().map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Member</label>
-            <select
-              value={selectedMember}
-              onChange={(e) => setSelectedMember(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Members</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.username || member.email?.split('@')[0]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Statuses</option>
-              <option value="TO_DO">Pending</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="BLOCKED">Blocked</option>
-            </select>
-          </div>
-          <div>
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="due_date">Due Date</option>
-              <option value="priority">Priority</option>
-              <option value="status">Status</option>
-              <option value="title">Title</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setSelectedMember('all');
-                setSelectedProject('all');
-                setSelectedStatus('all');
-                setSortBy('due_date');
-              }}
-              className="w-full p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Clear Filters
-            </button>
+            <div className="flex gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="due_date">Due Date</option>
+                <option value="priority">Priority</option>
+                <option value="status">Status</option>
+                <option value="title">Title</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center"
+                title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+              >
+                {sortOrder === 'asc' ? (
+                  <ArrowUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ArrowDown className="w-5 h-5 text-blue-600" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -553,214 +538,174 @@ const TeamView = () => {
         </div>
       )}
 
-      {/* Hierarchical Team → Project → Task → Subtask View */}
+      {/* Cross-Functional Project → Task → Subtask View */}
       {!loading && (
         <div className="space-y-4">
-          {projects.length === 0 ? (
+          <h2 className="text-lg font-semibold text-gray-900">My Projects</h2>
+
+          {getUserCollaboratorProjects().length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border p-8 text-center text-gray-500">
-              No projects found.
+              <p className="text-lg font-semibold mb-2">No Projects Found</p>
+              <p className="text-sm">You are not currently a collaborator on any projects.</p>
             </div>
           ) : (
-            // Show only user's teams
-            teams.map((team) => {
-              const teamProjects = projects.filter(p => p.team_id === team.id);
-
-              // Skip teams with no projects
-              if (teamProjects.length === 0) {
-                return null;
-              }
-
-              const isTeamExpanded = expandedTeams.has(team.id);
+            // Show only projects where current user is a collaborator
+            getUserCollaboratorProjects().map((project) => {
+              const projectTasks = filteredTasks.filter(t => t.project_id === project.id && !t.isSubtask);
+              const isProjectExpanded = expandedProjects.has(project.id);
+              const completedTasks = projectTasks.filter(t => t.status === 'COMPLETED').length;
 
               return (
-                <div key={team.id} className="bg-white rounded-lg shadow-sm border">
-                  {/* Team Header */}
+                
+                <div key={project.id} className="bg-white rounded-lg shadow-sm border">
+                  
                   <div
-                    className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b cursor-pointer hover:from-blue-100 hover:to-blue-150 transition-colors"
-                    onClick={() => toggleTeamExpansion(team.id)}
+                    className="p-4 bg-gradient-to-r from-green-50 to-green-100 border-b cursor-pointer hover:from-green-100 hover:to-green-150 transition-colors"
+                    onClick={() => toggleProjectExpansion(project.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        {isTeamExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-blue-600" />
+                      <div className="flex items-center space-x-3 flex-1">
+                        {isProjectExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-green-600" />
                         ) : (
-                          <ChevronRight className="w-5 h-5 text-blue-600" />
+                          <ChevronRight className="w-5 h-5 text-green-600" />
                         )}
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <h2 className="text-lg font-bold text-gray-900">{team.name}</h2>
+                        <Folder className="w-5 h-5 text-green-600" />
+                        <div className="flex-1">
+                          <h2 className="text-lg font-bold text-gray-900">{project.name}</h2>
+                          {project.description && (
+                            <p className="text-sm text-gray-600 mt-1">{project.description}</p>
+                          )}
+                          {project.collaborator_ids && project.collaborator_ids.length > 0 && (
+                            <p className="text-xs text-green-700 mt-1">
+                              Cross-functional • {project.collaborator_ids.length} {project.collaborator_ids.length === 1 ? 'collaborator' : 'collaborators'}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full font-medium">
-                          {teamProjects.length} {teamProjects.length === 1 ? 'Project' : 'Projects'}
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {completedTasks}/{projectTasks.length} Tasks
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Team Projects */}
-                  {isTeamExpanded && (
-                    <div className="divide-y">
-                      {teamProjects.length === 0 ? (
+                  {/* Project Tasks */}
+                  {isProjectExpanded && (
+                    <div className="bg-white divide-y">
+                      {projectTasks.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
-                          No projects in this team yet.
+                          No tasks in this project yet.
                         </div>
                       ) : (
-                        teamProjects.map((project) => {
-                          const projectTasks = filteredTasks.filter(t => t.project_id === project.id && !t.isSubtask);
-                          const isProjectExpanded = expandedProjects.has(project.id);
-                          const completedTasks = projectTasks.filter(t => t.status === 'COMPLETED').length;
+                        projectTasks.map((task) => {
+                          const subtasks = filteredTasks.filter(t => t.isSubtask && t.parent_id === task.id);
+                          const isTaskExpanded = expandedTasks.has(task.id);
 
                           return (
-                            <div key={project.id} className="bg-gray-50">
-                              {/* Project Header */}
-                              <div
-                                className="p-4 pl-12 cursor-pointer hover:bg-gray-100 transition-colors"
-                                onClick={() => toggleProjectExpansion(project.id)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    {isProjectExpanded ? (
-                                      <ChevronDown className="w-4 h-4 text-green-600" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4 text-green-600" />
-                                    )}
-                                    <Folder className="w-4 h-4 text-green-600" />
-                                    <div>
-                                      <h3 className="text-base font-semibold text-gray-900">{project.name}</h3>
-                                      {project.description && (
-                                        <p className="text-xs text-gray-600 mt-1">{project.description}</p>
+                            <div key={task.id}>
+                              {/* Task */}
+                              <div className="p-4 pl-12 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      {subtasks.length > 0 && (
+                                        <button
+                                          onClick={() => toggleTaskExpansion(task.id)}
+                                          className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors"
+                                        >
+                                          {isTaskExpanded ? (
+                                            <ChevronDown className="w-3 h-3 mr-1" />
+                                          ) : (
+                                            <ChevronRight className="w-3 h-3 mr-1" />
+                                          )}
+                                          {subtasks.filter(st => st.status === 'COMPLETED').length}/{subtasks.length} subtasks
+                                        </button>
                                       )}
                                     </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                      {completedTasks}/{projectTasks.length} Tasks
-                                    </span>
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                      {task.title}
+                                    </h4>
+                                    {task.description && (
+                                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                                    )}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                                        {getStatusIcon(task.status)}
+                                        <span className="ml-1">{task.status?.replace('_', ' ')}</span>
+                                      </span>
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                        {getPriorityLabel(task.priority)}
+                                      </span>
+                                      {task.due_date && (
+                                        <span className={`flex items-center text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                          <Calendar className="w-3 h-3 mr-1" />
+                                          {new Date(task.due_date).toLocaleDateString()}
+                                          {isOverdue(task.due_date, task.status) && ' (Overdue)'}
+                                        </span>
+                                      )}
+                                      {task.assignee_ids && task.assignee_ids.length > 0 && (
+                                        <span className="flex items-center text-xs text-gray-600">
+                                          <User className="w-3 h-3 mr-1" />
+                                          {task.assignee_ids.map(id => {
+                                            const member = teamMembers.find(m => m.id === id);
+                                            return member?.username || member?.email?.split('@')[0] || 'Unknown';
+                                          }).join(', ')}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Project Tasks */}
-                              {isProjectExpanded && (
-                                <div className="bg-white divide-y">
-                                  {projectTasks.length === 0 ? (
-                                    <div className="p-8 pl-20 text-center text-gray-500">
-                                      No tasks in this project yet.
-                                    </div>
-                                  ) : (
-                                    projectTasks.map((task) => {
-                                      const subtasks = filteredTasks.filter(t => t.isSubtask && t.parent_id === task.id);
-                                      const isTaskExpanded = expandedTasks.has(task.id);
-
-                                      return (
-                                        <div key={task.id}>
-                                          {/* Task */}
-                                          <div className="p-4 pl-20 hover:bg-gray-50 transition-colors">
-                                            <div className="flex items-start justify-between">
-                                              <div className="flex-1">
-                                                <div className="flex items-center space-x-2 mb-2">
-                                                  {subtasks.length > 0 && (
-                                                    <button
-                                                      onClick={() => toggleTaskExpansion(task.id)}
-                                                      className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors"
-                                                    >
-                                                      {isTaskExpanded ? (
-                                                        <ChevronDown className="w-3 h-3 mr-1" />
-                                                      ) : (
-                                                        <ChevronRight className="w-3 h-3 mr-1" />
-                                                      )}
-                                                      {subtasks.filter(st => st.status === 'COMPLETED').length}/{subtasks.length} subtasks
-                                                    </button>
-                                                  )}
-                                                </div>
-                                                <h4 className="text-sm font-semibold text-gray-900 mb-1">
-                                                  {task.title}
-                                                </h4>
-                                                {task.description && (
-                                                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">{task.description}</p>
-                                                )}
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                                                    {getStatusIcon(task.status)}
-                                                    <span className="ml-1">{task.status?.replace('_', ' ')}</span>
-                                                  </span>
-                                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                                    {getPriorityLabel(task.priority)}
-                                                  </span>
-                                                  {task.due_date && (
-                                                    <span className={`flex items-center text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                                      <Calendar className="w-3 h-3 mr-1" />
-                                                      {new Date(task.due_date).toLocaleDateString()}
-                                                      {isOverdue(task.due_date, task.status) && ' (Overdue)'}
-                                                    </span>
-                                                  )}
-                                                  {task.assignee_ids && task.assignee_ids.length > 0 && (
-                                                    <span className="flex items-center text-xs text-gray-600">
-                                                      <User className="w-3 h-3 mr-1" />
-                                                      {task.assignee_ids.map(id => {
-                                                        const member = teamMembers.find(m => m.id === id);
-                                                        return member?.username || member?.email?.split('@')[0] || 'Unknown';
-                                                      }).join(', ')}
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
+                              {/* Subtasks */}
+                              {subtasks.length > 0 && isTaskExpanded && (
+                                <div className="bg-purple-50 border-l-4 border-purple-300">
+                                  {subtasks.map((subtask) => (
+                                    <div key={subtask.id} className="p-3 pl-20 hover:bg-purple-100 transition-colors border-t border-purple-200">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center space-x-2 mb-1">
+                                            <span className="text-xs text-purple-700 bg-purple-200 px-2 py-0.5 rounded font-medium">
+                                              Subtask
+                                            </span>
                                           </div>
-
-                                          {/* Subtasks */}
-                                          {subtasks.length > 0 && isTaskExpanded && (
-                                            <div className="bg-purple-50 border-l-4 border-purple-300">
-                                              {subtasks.map((subtask) => (
-                                                <div key={subtask.id} className="p-3 pl-28 hover:bg-purple-100 transition-colors border-t border-purple-200">
-                                                  <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
-                                                      <div className="flex items-center space-x-2 mb-1">
-                                                        <span className="text-xs text-purple-700 bg-purple-200 px-2 py-0.5 rounded font-medium">
-                                                          Subtask
-                                                        </span>
-                                                      </div>
-                                                      <h5 className="text-sm font-medium text-gray-900 mb-1">
-                                                        {subtask.title}
-                                                      </h5>
-                                                      {subtask.description && (
-                                                        <p className="text-xs text-gray-600 mb-2 line-clamp-1">{subtask.description}</p>
-                                                      )}
-                                                      <div className="flex flex-wrap items-center gap-2">
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
-                                                          {getStatusIcon(subtask.status)}
-                                                          <span className="ml-1">{subtask.status?.replace('_', ' ')}</span>
-                                                        </span>
-                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
-                                                          {getPriorityLabel(subtask.priority)}
-                                                        </span>
-                                                        {subtask.due_date && (
-                                                          <span className={`flex items-center text-xs ${isOverdue(subtask.due_date, subtask.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                                            <Calendar className="w-3 h-3 mr-1" />
-                                                            {new Date(subtask.due_date).toLocaleDateString()}
-                                                            {isOverdue(subtask.due_date, subtask.status) && ' (Overdue)'}
-                                                          </span>
-                                                        )}
-                                                        {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
-                                                          <span className="flex items-center text-xs text-gray-600">
-                                                            <User className="w-3 h-3 mr-1" />
-                                                            {subtask.assignee_ids.map(id => {
-                                                              const member = teamMembers.find(m => m.id === id);
-                                                              return member?.username || member?.email?.split('@')[0] || 'Unknown';
-                                                            }).join(', ')}
-                                                          </span>
-                                                        )}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
+                                          <h5 className="text-sm font-medium text-gray-900 mb-1">
+                                            {subtask.title}
+                                          </h5>
+                                          {subtask.description && (
+                                            <p className="text-xs text-gray-600 mb-2 line-clamp-1">{subtask.description}</p>
                                           )}
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
+                                              {getStatusIcon(subtask.status)}
+                                              <span className="ml-1">{subtask.status?.replace('_', ' ')}</span>
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
+                                              {getPriorityLabel(subtask.priority)}
+                                            </span>
+                                            {subtask.due_date && (
+                                              <span className={`flex items-center text-xs ${isOverdue(subtask.due_date, subtask.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                                <Calendar className="w-3 h-3 mr-1" />
+                                                {new Date(subtask.due_date).toLocaleDateString()}
+                                                {isOverdue(subtask.due_date, subtask.status) && ' (Overdue)'}
+                                              </span>
+                                            )}
+                                            {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
+                                              <span className="flex items-center text-xs text-gray-600">
+                                                <User className="w-3 h-3 mr-1" />
+                                                {subtask.assignee_ids.map(id => {
+                                                  const member = teamMembers.find(m => m.id === id);
+                                                  return member?.username || member?.email?.split('@')[0] || 'Unknown';
+                                                }).join(', ')}
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
-                                      );
-                                    })
-                                  )}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </div>
