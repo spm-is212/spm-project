@@ -1,3 +1,5 @@
+import { API_CONFIG } from '../config/api';
+
 export async function apiFetch(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
 
@@ -7,7 +9,7 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const res = await fetch(`http://localhost:8000/api/${url}`, {
+  const res = await fetch(`${API_CONFIG.BASE_URL}/${url}`, {
     ...options,
     headers,
   });

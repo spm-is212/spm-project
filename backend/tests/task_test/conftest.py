@@ -135,7 +135,9 @@ def patch_crud_for_testing(monkeypatch):
 
     yield
 
-    # Cleanup is automatic when monkeypatch fixture ends
+    # Cleanup: Restore original methods first to avoid double _test suffix
+    monkeypatch.undo()
+
     # Additional cleanup: ensure test tables are completely clear
     from backend.tests.utils.cleanup import clear_all_test_data
     try:

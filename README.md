@@ -1,5 +1,3 @@
-# spm-project
-
 Run the FastAPI app backend:
 
 uvicorn backend.main:app --reload
