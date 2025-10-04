@@ -47,8 +47,10 @@ const TeamView = () => {
 
   // Filters
   const [selectedTeam, setSelectedTeam] = useState<string>('');
-  const [sortBy, setSortBy] = useState<string>('due_date');
+  const [sortBy, setSortBy] = useState<string>('priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -113,7 +115,18 @@ const TeamView = () => {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch(API_ENDPOINTS.TASKS.READ);
+      // Use filter endpoint if date range is set, otherwise use regular read
+      let endpoint: string = API_ENDPOINTS.TASKS.READ;
+      const params = new URLSearchParams();
+
+      if (startDate || endDate) {
+        endpoint = API_ENDPOINTS.TASKS.FILTER_BY_DUE_DATE;
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+      }
+
+      const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
+      const data = await apiFetch(url);
       const tasksData = data.tasks || [];
 
       // Transform tasks to include parent/subtask information
@@ -135,7 +148,7 @@ const TeamView = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   // Fetch team members
   const fetchTeamMembers = useCallback(async () => {
@@ -151,17 +164,11 @@ const TeamView = () => {
   useEffect(() => {
     let sorted = [...tasks];
 
-    // Sort tasks
+    // Sort tasks (priority, status, title only - no due_date)
     const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
     sorted.sort((a, b) => {
       let result = 0;
       switch (sortBy) {
-        case 'due_date': {
-          if (!a.due_date) return 1;
-          if (!b.due_date) return -1;
-          result = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-          break;
-        }
         case 'priority': {
           result = (priorityOrder[a.priority?.toUpperCase()] || 3) - (priorityOrder[b.priority?.toUpperCase()] || 3);
           break;
@@ -237,21 +244,6 @@ const TeamView = () => {
     const result = projects.filter(p => allCollaboratorProjectIds.has(p.id));
     console.log('[TeamView] Final user projects:', result.length);
     return result;
-  };
-
-  // Get team members who have tasks assigned in visible projects
-  const getActiveTeamMembers = () => {
-    const assigneeIds = new Set<string>();
-    const teamMemberIds = new Set(teamMembers.map(m => m.id));
-
-    tasks.forEach(task => {
-      task.assignee_ids?.forEach(id => {
-        if (teamMemberIds.has(id)) {
-          assigneeIds.add(id);
-        }
-      });
-    });
-    return teamMembers.filter(member => assigneeIds.has(member.id));
   };
 
   // Calculate task statistics
@@ -494,40 +486,74 @@ const TeamView = () => {
       </div>
 
 
-      {/* Sorting Only */}
+      {/* Filter and Sort Combined */}
       <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-        <div className="flex items-center mb-3">
+        <div className="flex items-center mb-4">
           <Filter className="w-5 h-5 text-gray-600 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-900">Sorting</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Filter & Sort Tasks</h2>
         </div>
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-            <div className="flex gap-2">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="due_date">Due Date</option>
-                <option value="priority">Priority</option>
-                <option value="status">Status</option>
-                <option value="title">Title</option>
-              </select>
-              <button
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center"
-                title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
-              >
-                {sortOrder === 'asc' ? (
-                  <ArrowUp className="w-5 h-5 text-blue-600" />
-                ) : (
-                  <ArrowDown className="w-5 h-5 text-blue-600" />
-                )}
-              </button>
-            </div>
+
+        <div className="flex flex-wrap gap-4 items-end">
+          {/* Date Filter Section */}
+          <div className="flex-1 min-w-[300px]">
+            <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
+          <div className="flex-1 min-w-[300px]">
+            <label className="block text-xs text-gray-600 mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setStartDate('');
+              setEndDate('');
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700 whitespace-nowrap"
+          >
+            Clear
+          </button>
+
+          {/* Sort Section */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs text-gray-600 mb-1">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="priority">Priority</option>
+              <option value="status">Status</option>
+              <option value="title">Title</option>
+            </select>
+          </div>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center"
+            title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+          >
+            {sortOrder === 'asc' ? (
+              <ArrowUp className="w-5 h-5 text-blue-600" />
+            ) : (
+              <ArrowDown className="w-5 h-5 text-blue-600" />
+            )}
+          </button>
         </div>
+
+        {(startDate || endDate) && (
+          <div className="mt-2 text-xs text-blue-600">
+            Filtering tasks {startDate && `from ${startDate}`} {startDate && endDate && 'to'} {endDate && endDate}
+          </div>
+        )}
       </div>
 
       {/* Loading State */}

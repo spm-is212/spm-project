@@ -34,5 +34,6 @@ export const API_ENDPOINTS = {
     READ: 'tasks/readTasks',
     READ_ARCHIVED: 'tasks/readArchivedTasks',
     UPDATE: 'tasks/updateTask',
+    FILTER_BY_DUE_DATE: 'tasks/filterByDueDate',
   },
 } as const;
