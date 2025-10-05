@@ -590,6 +590,19 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
     updateTask(editingTask.id, editingTask);
   };
 
+  // Convert numeric priority to string label
+  const getPriorityLabel = (priority: TaskPriority | number | undefined): string => {
+    if (typeof priority === 'number') {
+      switch (priority) {
+        case 1: return 'LOW';
+        case 2: return 'MEDIUM';
+        case 3: return 'HIGH';
+        default: return 'UNKNOWN';
+      }
+    }
+    return (priority || 'UNKNOWN').toString().toUpperCase();
+  };
+
   // Get priority color
   const getPriorityColor = (priority: number | undefined): string => {
     if (!priority) return 'text-gray-600 bg-gray-100';
@@ -1477,9 +1490,9 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                         </span>
                       )}
                     </div>
-                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                    {task.priority}
-                  </span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                      {getPriorityLabel(task.priority)}
+                    </span>
                   </div>
 
                   {task.due_date && (
@@ -1694,7 +1707,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                         {subtask.status?.replace('_', ' ').toUpperCase()}
                                       </span>
                                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
-                                        {subtask.priority}
+                                        {getPriorityLabel(subtask.priority)}
                                       </span>
                                       {subtask.is_archived && (
                                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
@@ -1755,7 +1768,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                         )}
                                         <div className="flex space-x-2 mt-2">
                                           <span className={`px-1 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(newSubtask.priority)}`}>
-                                            {newSubtask.priority?.toUpperCase()}
+                                            {getPriorityLabel(newSubtask.priority)}
                                           </span>
                                           {newSubtask.due_date && (
                                             <span className="text-xs text-gray-600">

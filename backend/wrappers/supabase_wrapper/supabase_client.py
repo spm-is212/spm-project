@@ -1,5 +1,5 @@
 import os
-from supabase import create_client
+from supabase import create_client, ClientOptions
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,9 +15,15 @@ class SupabaseClient:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(SupabaseClient, cls).__new__(cls)
+
+            # Create client with connection timeout settings for Windows
             cls._client = create_client(
                 os.getenv("SUPABASE_URL"),
-                os.getenv("SUPABASE_KEY")
+                os.getenv("SUPABASE_KEY"),
+                options=ClientOptions(
+                    postgrest_client_timeout=30,
+                    storage_client_timeout=30,
+                )
             )
         return cls._instance
 
