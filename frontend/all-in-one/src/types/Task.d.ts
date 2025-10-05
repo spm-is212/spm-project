@@ -23,6 +23,7 @@ export interface Subtask {
     status: TaskStatus;
     priority: TaskPriority;
     assignee_ids: string[];
+    file_url?: string;
     is_archived: boolean;
     comments?: Comment[];
 }
@@ -36,6 +37,7 @@ export interface Task {
     status: TaskStatus;
     priority: TaskPriority;
     assignee_ids: string[];
+    file_url?: string;
     assigned_to?: string; // legacy field for display
     owner_user_id: string;
     comments?: Comment[];
@@ -72,6 +74,7 @@ export interface TaskCreatePayload {
         due_date: string;
         priority: TaskPriority;
         assignee_ids: string[];
+        file_url?: string;
     };
     subtasks: Array<{
         title: string;
@@ -80,6 +83,7 @@ export interface TaskCreatePayload {
         due_date: string;
         priority: TaskPriority;
         assignee_ids: string[];
+        file_url?: string;
     }>;
 }
 
@@ -91,6 +95,7 @@ export interface TaskUpdatePayload {
         due_date: string;
         priority: TaskPriority;
         assignee_ids: string[];
+        file_url?: string;
         is_archived?: boolean;
     };
     subtasks: {};

@@ -14,6 +14,7 @@ from backend.utils.task_crud.constants import (
     STATUS_FIELD,
     PRIORITY_FIELD,
     ASSIGNEE_IDS_FIELD,
+    FILE_URL_FIELD,
     TASK_ASSIGNEE_REQUIRED_ERROR,
     SUBTASK_ASSIGNEE_REQUIRED_ERROR,
     MAIN_TASK_RESPONSE_KEY,
@@ -94,6 +95,8 @@ class TaskUpdater:
                 main_task_dict[STATUS_FIELD] = main_task.status.value
             if main_task.priority:
                 main_task_dict[PRIORITY_FIELD] = main_task.priority.value
+            if main_task.file_url is not None:
+                main_task_dict[FILE_URL_FIELD] = main_task.file_url
             if main_task.assignee_ids is not None:
                 current_task = self.crud.select(self.table_name, filters={TASK_ID_FIELD: main_task_id})
                 if current_task:
@@ -105,7 +108,7 @@ class TaskUpdater:
                             if len(main_task.assignee_ids) == 0:
                                 raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
                             main_task_dict[ASSIGNEE_IDS_FIELD] = main_task.assignee_ids
-                        # else: staff removal → skip (don’t set assignee_ids at all)
+                        # else: staff removal - skip (don't set assignee_ids at all)
                     else:
                         if len(main_task.assignee_ids) == 0:
                             raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
@@ -115,7 +118,7 @@ class TaskUpdater:
             if main_task.is_archived is not None:
                 main_task_dict[IS_ARCHIVED_FIELD] = main_task.is_archived
 
-            # ✅ recurrence for main task
+            # Recurrence for main task
             if main_task.recurrence_rule is not None:
                 main_task_dict["recurrence_rule"] = main_task.recurrence_rule.value
             if main_task.recurrence_interval is not None:
@@ -137,10 +140,10 @@ class TaskUpdater:
                     elif isinstance(results, dict):
                         result[MAIN_TASK_RESPONSE_KEY] = results
             else:
-                # No meaningful fields provided → skip update
+                # No meaningful fields provided - skip update
                 result[MAIN_TASK_RESPONSE_KEY] = None
                 
-     # --- SUBTASKS UPDATE ---
+        # --- SUBTASKS UPDATE ---
         if subtasks:
             for subtask_id, subtask_data in subtasks.items():
                 subtask_dict = {}
@@ -156,6 +159,9 @@ class TaskUpdater:
                 if subtask_data.priority:
                     subtask_dict[PRIORITY_FIELD] = subtask_data.priority.value
 
+                if subtask_data.file_url is not None:
+                    subtask_dict[FILE_URL_FIELD] = subtask_data.file_url
+
                 if subtask_data.assignee_ids is not None:
                     current_subtask = self.crud.select(self.table_name, filters={TASK_ID_FIELD: subtask_id})
                     if current_subtask:
@@ -168,7 +174,7 @@ class TaskUpdater:
                                 if len(subtask_data.assignee_ids) == 0:
                                     raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
                                 subtask_dict[ASSIGNEE_IDS_FIELD] = subtask_data.assignee_ids
-                            # else: staff removal → skip (don’t set assignee_ids at all)
+                            # else: staff removal - skip (don't set assignee_ids at all)
                         else:
                             if len(subtask_data.assignee_ids) == 0:
                                 raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
@@ -177,7 +183,7 @@ class TaskUpdater:
                 if subtask_data.is_archived is not None:
                     subtask_dict[IS_ARCHIVED_FIELD] = subtask_data.is_archived
 
-                # ✅ recurrence for subtasks (if allowed)
+                # Recurrence for subtasks (if allowed)
                 if subtask_data.recurrence_rule is not None:
                     subtask_dict["recurrence_rule"] = subtask_data.recurrence_rule.value
                 if subtask_data.recurrence_interval is not None:
@@ -210,6 +216,9 @@ class TaskUpdater:
                     OWNER_USER_ID_FIELD: user_id,
                     IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED
                 }
+
+                if new_subtask.file_url:
+                    subtask_dict[FILE_URL_FIELD] = new_subtask.file_url
 
                 results = self.crud.insert(self.table_name, subtask_dict)
                 if results:

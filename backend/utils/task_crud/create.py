@@ -13,6 +13,7 @@ from backend.utils.task_crud.constants import (
     PARENT_ID_FIELD,
     COMMENTS_FIELD,
     ATTACHMENTS_FIELD,
+    FILE_URL_FIELD,
     IS_ARCHIVED_FIELD,
     MAIN_TASK_KEY,
     SUBTASKS_RESPONSE_KEY,
@@ -49,7 +50,7 @@ class TaskCreator:
             COMMENTS_FIELD: DEFAULT_COMMENTS,
             ATTACHMENTS_FIELD: DEFAULT_ATTACHMENTS,
             IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED,
-           "recurrence_rule": main_task.recurrence_rule.value if main_task.recurrence_rule else None,
+            "recurrence_rule": main_task.recurrence_rule.value if main_task.recurrence_rule else None,
             "recurrence_interval": main_task.recurrence_interval,
             "recurrence_end_date": main_task.recurrence_end_date.isoformat() if main_task.recurrence_end_date else None,
         }
@@ -59,6 +60,9 @@ class TaskCreator:
         # Only include project_id if provided
         if main_task.project_id is not None:
             main_task_dict["project_id"] = main_task.project_id
+
+        if main_task.file_url:
+            main_task_dict[FILE_URL_FIELD] = main_task.file_url
 
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
 
@@ -85,7 +89,7 @@ class TaskCreator:
                     COMMENTS_FIELD: DEFAULT_COMMENTS,
                     ATTACHMENTS_FIELD: DEFAULT_ATTACHMENTS,
                     IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED,
-                    "recurrence_rule": subtask_data.recurrence_rule.value if subtask_data.recurrence_rule else None,
+                     "recurrence_rule": subtask_data.recurrence_rule.value if subtask_data.recurrence_rule else None,
                     "recurrence_interval": subtask_data.recurrence_interval,
                     "recurrence_end_date": subtask_data.recurrence_end_date.isoformat() if subtask_data.recurrence_end_date else None,
 
@@ -96,6 +100,9 @@ class TaskCreator:
                 # Only include project_id if provided
                 if subtask_data.project_id is not None:
                     subtask_dict["project_id"] = subtask_data.project_id
+
+                if subtask_data.file_url:
+                    subtask_dict[FILE_URL_FIELD] = subtask_data.file_url
 
                 created_subtask = self.crud.insert(self.table_name, subtask_dict)
                 result[SUBTASKS_RESPONSE_KEY].append(created_subtask)

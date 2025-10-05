@@ -34,6 +34,7 @@ STATUS_FIELD = "status"
 PRIORITY_FIELD = "priority"
 COMMENTS_FIELD = "comments"
 ATTACHMENTS_FIELD = "attachments"
+FILE_URL_FIELD = "file_url"
 
 # Default values for new tasks/subtasks
 DEFAULT_COMMENTS = []

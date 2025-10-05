@@ -33,6 +33,7 @@ class TaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.TO_DO
     priority: TaskPriority
     assignee_ids: List[str]
+    file_url: Optional[str] = Field(None, description="Public URL of the task file stored in Supabase")
     parent_id: Optional[str] = Field(default=MAIN_TASK_PARENT_ID)
 
     # recurrence fields
@@ -82,6 +83,13 @@ class TaskCreate(BaseModel):
             raise ValueError("Recurrence end date cannot be before the due date")
         return v
 
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
+        return v
+
 
 class SubtaskCreate(BaseModel):
     title: str
@@ -91,6 +99,7 @@ class SubtaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.TO_DO
     priority: TaskPriority
     assignee_ids: Optional[List[str]] = None
+    file_url: Optional[str] = Field(None, description="Public URL of the subtask file stored in Supabase")
     parent_id: Optional[str] = None
     recurrence_rule: Optional[RecurrenceRule] = None
     recurrence_interval: Optional[int] = 1
@@ -124,6 +133,13 @@ class SubtaskCreate(BaseModel):
             raise ValueError("Due date cannot be in the past")
         return v
 
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
+        return v
+
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -133,6 +149,7 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     assignee_ids: Optional[List[str]] = None
+    file_url: Optional[str] = None
     is_archived: Optional[bool] = None
 
     # recurrence fields
@@ -182,6 +199,13 @@ class TaskUpdate(BaseModel):
             raise ValueError("Recurrence end date cannot be before the due date")
         return v
 
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
+        return v
+
 
 class SubtaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -190,6 +214,7 @@ class SubtaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     assignee_ids: Optional[List[str]] = None
+    file_url: Optional[str] = None
     is_archived: Optional[bool] = None
 
     @field_validator("title")
@@ -220,6 +245,13 @@ class SubtaskUpdate(BaseModel):
     def due_date_not_past(cls, v: Optional[date]) -> Optional[date]:
         if v and v < date.today():
             raise ValueError("Due date cannot be in the past")
+        return v
+
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
         return v
 
 
