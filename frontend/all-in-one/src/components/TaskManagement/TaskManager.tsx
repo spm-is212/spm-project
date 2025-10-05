@@ -591,16 +591,12 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
   };
 
   // Convert numeric priority to string label
-  const getPriorityLabel = (priority: TaskPriority | number | undefined): string => {
-    if (typeof priority === 'number') {
-      switch (priority) {
-        case 1: return 'LOW';
-        case 2: return 'MEDIUM';
-        case 3: return 'HIGH';
-        default: return 'UNKNOWN';
-      }
-    }
-    return (priority || 'UNKNOWN').toString().toUpperCase();
+  const getPriorityLabel = (priority: number | string | undefined): string => {
+    const num = Number(priority);
+    if (isNaN(num)) return 'UNKNOWN';
+    if (num >= 8) return 'HIGH';
+    if (num >= 4) return 'MEDIUM';
+    return 'LOW';
   };
 
   // Get priority color

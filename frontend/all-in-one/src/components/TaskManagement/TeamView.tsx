@@ -165,12 +165,11 @@ const TeamView = () => {
     let sorted = [...tasks];
 
     // Sort tasks (priority, status, title only - no due_date)
-    const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
     sorted.sort((a, b) => {
       let result = 0;
       switch (sortBy) {
         case 'priority': {
-          result = (priorityOrder[a.priority?.toUpperCase()] || 3) - (priorityOrder[b.priority?.toUpperCase()] || 3);
+          result = (a.priority ?? 0) - (b.priority ?? 0);
           break;
         }
         case 'status': {
@@ -269,20 +268,17 @@ const TeamView = () => {
 
   const stats = getTaskStats();
 
-  // Get priority and status colors
-  const getPriorityLabel = (priority: string | number | undefined): string => {
-    if (typeof priority === 'number') {
-      switch (priority) {
-        case 1: return 'LOW';
-        case 2: return 'MEDIUM';
-        case 3: return 'HIGH';
-        default: return 'UNKNOWN';
-      }
-    }
-    return (priority || 'UNKNOWN').toString().toUpperCase();
+  const getPriorityLabel = (priority: number | string | undefined): string => {
+    console.log("DEBUG priority value:", priority, "type:", typeof priority);
+
+    const num = Number(priority);
+    if (isNaN(num)) return 'UNKNOWN';
+    if (num >= 8) return 'HIGH';
+    if (num >= 4) return 'MEDIUM';
+    return 'LOW';
   };
 
-  const getPriorityColor = (priority: string | number | undefined): string => {
+  const getPriorityColor = (priority: number | string | undefined): string => {
     const label = getPriorityLabel(priority);
     switch (label) {
       case 'HIGH': return 'text-red-600 bg-red-100';
