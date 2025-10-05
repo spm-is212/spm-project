@@ -27,7 +27,7 @@ const TaskManager = () => {
     description: '',
     project_id: '',
     status: 'TO_DO',
-    priority: 'MEDIUM',
+    priority: 5,    
     due_date: '',
     comments: '',
     recurrence_rule: '',       // DAILY, WEEKLY, MONTHLY
@@ -41,7 +41,7 @@ const TaskManager = () => {
     description: '',
     project_id: '',
     status: 'TO_DO',
-    priority: 'MEDIUM',
+    priority: 5, 
     due_date: '',
     comments: ''
   });
@@ -136,9 +136,8 @@ function validateTask(task: NewTask, assignees: string[], currentUserId: string 
     return "Invalid status value";
   }
 
-  const allowedPriorities = ["LOW", "MEDIUM", "HIGH"];
-  if (!allowedPriorities.includes(task.priority.toUpperCase())) {
-    return "Invalid priority value";
+  if (task.priority < 1 || task.priority > 10) {
+    return "Priority must be between 1 and 10";
   }
 
   if (!task.due_date) {
@@ -260,7 +259,7 @@ const createTask = async (taskData: NewTask): Promise<void> => {
 
     await fetchTasks();
     setShowAddForm(false);
-    setNewTask({ title: "", description: "", project_id: "", status: "TO_DO", priority: "MEDIUM", due_date: "", comments: "" });
+    setNewTask({ title: "", description: "", project_id: "", status: "TO_DO", priority: 5, due_date: "", comments: "" });
     setSubtasks([]);
     setShowSubtaskForm(false);
 
@@ -470,7 +469,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
     // Auto-populate project_id from main task
     const subtaskWithProject = { ...newSubtask, project_id: newTask.project_id, id: Date.now().toString() };
     setSubtasks([...subtasks, subtaskWithProject]);
-    setNewSubtask({ title: '', description: '', project_id: '', status: 'TO_DO', priority: 'MEDIUM', due_date: '', comments: '' });
+    setNewSubtask({ title: '', description: '', project_id: '', status: 'TO_DO', priority: 5, due_date: '', comments: '' });
     setShowSubtaskForm(false);
   };
 
@@ -502,7 +501,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
     }
 
     setEditingNewSubtasks([...editingNewSubtasks, { ...newSubtask, id: Date.now().toString() }]);
-    setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 'MEDIUM', due_date: '', comments: '' });
+    setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 5, due_date: '', comments: '' });
     setShowAddSubtaskInEdit(false);
   };
 
@@ -592,13 +591,12 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
   };
 
   // Get priority color
-  const getPriorityColor = (priority: TaskPriority | undefined): string => {
-    switch (priority?.toUpperCase()) {
-      case 'HIGH': return 'text-red-600 bg-red-100';
-      case 'MEDIUM': return 'text-yellow-600 bg-yellow-100';
-      case 'LOW': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
+  const getPriorityColor = (priority: number | undefined): string => {
+    if (!priority) return 'text-gray-600 bg-gray-100';
+
+    if (priority >= 8) return 'text-red-600 bg-red-100';    // High
+    if (priority >= 4) return 'text-yellow-600 bg-yellow-100'; // Medium
+    return 'text-green-600 bg-green-100';                   // Low
   };
 
   // Get status color
@@ -725,18 +723,17 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                   <option value="BLOCKED">Blocked</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                <select
-                  value={newTask.priority}
-                  onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                </select>
-              </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority (1–10)</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={newTask.priority}
+                onChange={(e) => setNewTask({ ...newTask, priority: Number(e.target.value) })}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                 <input
@@ -906,15 +903,14 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                               <option value="COMPLETED">Completed</option>
                               <option value="BLOCKED">Blocked</option>
                             </select>
-                            <select
-                              value={editingSubtaskData?.priority || 'MEDIUM'}
-                              onChange={(e) => setEditingSubtaskData(prev => prev ? {...prev, priority: e.target.value as TaskPriority} : null)}
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={editingSubtaskData?.priority ?? 5}
+                              onChange={(e) => setEditingSubtaskData(prev => prev ? {...prev, priority: Number(e.target.value)} : null)}
                               className="p-2 border border-gray-300 rounded text-sm"
-                            >
-                              <option value="LOW">Low</option>
-                              <option value="MEDIUM">Medium</option>
-                              <option value="HIGH">High</option>
-                            </select>
+                            />
                             <input
                               type="date"
                               value={editingSubtaskData?.due_date || ''}
@@ -991,18 +987,17 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                      <select
-                        value={newSubtask.priority}
-                        onChange={(e) => setNewSubtask({...newSubtask, priority: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="LOW">Low</option>
-                        <option value="MEDIUM">Medium</option>
-                        <option value="HIGH">High</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority (1–10)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={newSubtask.priority}
+                      onChange={(e) => setNewSubtask({ ...newSubtask, priority: Number(e.target.value) })}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                       <input
@@ -1113,15 +1108,15 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                     <option value="COMPLETED">Completed</option>
                     <option value="BLOCKED">Blocked</option>
                   </select>
-                  <select
-                    value={editingTask.priority}
-                    onChange={(e) => setEditingTask({...editingTask, priority: e.target.value})}
-                    className="p-1 border border-gray-300 rounded text-xs"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                  </select>
+                 <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={editingTask.priority ?? 5}
+                  onChange={(e) => setEditingTask({...editingTask, priority: Number(e.target.value)})}
+                  className="p-1 border border-gray-300 rounded text-xs"
+                />
+
                 </div>
                 <input
                   type="date"
@@ -1269,9 +1264,10 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                   <p className="text-xs text-gray-600 mt-1">{newSubtask.description}</p>
                                 )}
                                 <div className="flex space-x-2 mt-2">
-                                  <span className={`px-1 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(newSubtask.priority)}`}>
-                                    {newSubtask.priority?.toUpperCase()}
-                                  </span>
+                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(newSubtask.priority)}`}>
+                                  {newSubtask.priority}
+                                </span>
+
                                   {newSubtask.due_date && (
                                     <span className="text-xs text-gray-600">
                                       Due: {new Date(newSubtask.due_date).toLocaleDateString()}
@@ -1333,15 +1329,14 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                             <option value="COMPLETED">Completed</option>
                             <option value="BLOCKED">Blocked</option>
                           </select>
-                          <select
-                            value={newSubtask.priority}
-                            onChange={(e) => setNewSubtask({...newSubtask, priority: e.target.value as TaskPriority})}
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={newSubtask.priority ?? 5}
+                            onChange={(e) => setNewSubtask({...newSubtask, priority: Number(e.target.value)})}
                             className="p-2 border border-gray-300 rounded text-sm"
-                          >
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM">Medium</option>
-                            <option value="HIGH">High</option>
-                          </select>
+                          />
                           <input
                             type="date"
                             value={newSubtask.due_date}
@@ -1426,7 +1421,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                           <button
                             onClick={() => {
                               setShowAddSubtaskInEdit(false);
-                              setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 'MEDIUM', due_date: '', comments: '' });
+                              setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 5, due_date: '', comments: '' });
                             }}
                             className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center"
                           >
@@ -1482,9 +1477,9 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                         </span>
                       )}
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                      {task.priority?.toUpperCase()}
-                    </span>
+                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                    {task.priority}
+                  </span>
                   </div>
 
                   {task.due_date && (
@@ -1559,15 +1554,14 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                     <option value="COMPLETED">Completed</option>
                                     <option value="BLOCKED">Blocked</option>
                                   </select>
-                                  <select
-                                    value={editingTask.priority}
-                                    onChange={(e) => setEditingTask({...editingTask, priority: e.target.value})}
-                                    className="w-full p-1 border border-gray-300 rounded text-xs"
-                                  >
-                                    <option value="LOW">Low</option>
-                                    <option value="MEDIUM">Medium</option>
-                                    <option value="HIGH">High</option>
-                                  </select>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={editingTask.priority ?? 5}
+                                    onChange={(e) => setEditingTask({...editingTask, priority: Number(e.target.value)})}
+                                    className="p-1 border border-gray-300 rounded text-xs"
+                                  />
                                   <input
                                     type="date"
                                     value={editingTask.due_date}
@@ -1700,7 +1694,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                         {subtask.status?.replace('_', ' ').toUpperCase()}
                                       </span>
                                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
-                                        {subtask.priority?.toUpperCase()}
+                                        {subtask.priority}
                                       </span>
                                       {subtask.is_archived && (
                                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
@@ -1814,15 +1808,14 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                   rows={2}
                                 />
                                 <div className="grid grid-cols-2 gap-2">
-                                  <select
-                                    value={newSubtask.priority}
-                                    onChange={(e) => setNewSubtask({...newSubtask, priority: e.target.value as TaskPriority})}
-                                    className="p-2 border border-gray-300 rounded text-sm"
-                                  >
-                                    <option value="LOW">Low</option>
-                                    <option value="MEDIUM">Medium</option>
-                                    <option value="HIGH">High</option>
-                                  </select>
+                                 <input
+                                  type="number"
+                                  min="1"
+                                  max="10"
+                                  value={newSubtask.priority ?? 5}
+                                  onChange={(e) => setNewSubtask({...newSubtask, priority: Number(e.target.value)})}
+                                  className="p-2 border border-gray-300 rounded text-sm"
+                                />
                                   <input
                                     type="date"
                                     value={newSubtask.due_date}
@@ -1841,7 +1834,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                                   <button
                                     onClick={() => {
                                       setShowAddSubtaskInEdit(false);
-                                      setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 'MEDIUM', due_date: '', comments: '' });
+                                      setNewSubtask({ title: '', description: '', status: 'TO_DO', priority: 5, due_date: '', comments: '' });
                                     }}
                                     className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center"
                                   >

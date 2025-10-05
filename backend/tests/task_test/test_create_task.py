@@ -63,7 +63,7 @@ def test_create_subtask_without_assignees(auth_headers, sample_main_task, patch_
         "description": "This subtask has no assignees",
         "due_date": make_future_due_date(),
         "status": "TO_DO",
-        "priority": "LOW"
+        "priority": 3
     }
 
     payload = {

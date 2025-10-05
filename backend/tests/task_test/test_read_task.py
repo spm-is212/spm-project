@@ -139,7 +139,7 @@ class TestReadTaskEndpoint:
                 "description": "Task owned by engineering user",
                 "due_date": tomorrow.isoformat(),
                 "status": "TO_DO",
-                "priority": "HIGH",
+                "priority": 9,
                 "owner_user_id": "550e8400-e29b-41d4-a716-446655440004",
                 "assignee_ids": ["550e8400-e29b-41d4-a716-446655440004", "550e8400-e29b-41d4-a716-446655440003"],
                 "parent_id": None,
@@ -153,7 +153,7 @@ class TestReadTaskEndpoint:
                 "description": "Task owned by sales user",
                 "due_date": tomorrow.isoformat(),
                 "status": "IN_PROGRESS",
-                "priority": "MEDIUM",
+                "priority": 2,
                 "owner_user_id": "550e8400-e29b-41d4-a716-446655440005",
                 "assignee_ids": ["550e8400-e29b-41d4-a716-446655440005"],
                 "parent_id": None,
@@ -167,7 +167,7 @@ class TestReadTaskEndpoint:
                 "description": "Task owned by managing director",
                 "due_date": tomorrow.isoformat(),
                 "status": "COMPLETED",
-                "priority": "LOW",
+                "priority": 2,
                 "owner_user_id": "550e8400-e29b-41d4-a716-446655440000",
                 "assignee_ids": ["550e8400-e29b-41d4-a716-446655440000"],
                 "parent_id": None,
@@ -207,7 +207,7 @@ class TestReadTaskEndpoint:
                 "assignee_ids": ["550e8400-e29b-41d4-a716-446655440004", "550e8400-e29b-41d4-a716-446655440003"],
                 "parent_id": None,
                 "status": "TO_DO",
-                "priority": "HIGH"
+                "priority": 8
             },
             {
                 "id": "650e8400-e29b-41d4-a716-446655440001",
@@ -216,7 +216,7 @@ class TestReadTaskEndpoint:
                 "assignee_ids": ["550e8400-e29b-41d4-a716-446655440005"],
                 "parent_id": None,
                 "status": "IN_PROGRESS",
-                "priority": "MEDIUM"
+                "priority": 7
             },
             {
                 "id": "650e8400-e29b-41d4-a716-446655440002",
@@ -225,7 +225,7 @@ class TestReadTaskEndpoint:
                 "assignee_ids": ["550e8400-e29b-41d4-a716-446655440006"],
                 "parent_id": None,
                 "status": "COMPLETED",
-                "priority": "LOW"
+                "priority": 4
             }
         ]
 

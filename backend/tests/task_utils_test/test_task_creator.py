@@ -134,7 +134,7 @@ class TestTaskCreator:
             "description": "No assignees",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "LOW",
+            "priority": 1,
             "project_id": "proj-123"
         }
 

@@ -11,7 +11,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_pro
             "description": "A task created for testing updates",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "HIGH",
+            "priority": 3,
             "assignee_ids": ["00000000-0000-0000-0000-000000000001"]
         }
     }
@@ -30,7 +30,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_pro
         "title": "Updated Task Title",
         "description": "Updated description",
         "status": "IN_PROGRESS",
-        "priority": "MEDIUM"
+        "priority": 2,
     }
 
     update_payload = {
@@ -51,7 +51,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_pro
     assert data["main_task"]["title"] == "Updated Task Title"
     assert data["main_task"]["description"] == "Updated description"
     assert data["main_task"]["status"] == "IN_PROGRESS"
-    assert data["main_task"]["priority"] == "MEDIUM"
+    assert data["main_task"]["priority"] == 2
     assert data["main_task"]["parent_id"] is None  # Should remain None
 
 
@@ -64,7 +64,7 @@ def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing, 
             "description": "Testing assignee management",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "HIGH",
+            "priority": 8,
             "assignee_ids": ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000003"]
         }
     }
@@ -107,7 +107,7 @@ def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_
             "description": "Testing staff assignee permissions",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "HIGH",
+            "priority": 9,
             "assignee_ids": ["00000000-0000-0000-0000-000000000002"]
         }
     }

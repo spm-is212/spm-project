@@ -10,7 +10,7 @@ def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_t
             "description": "Test Description",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "MEDIUM",
+            "priority": 5,
             "assignee_ids": [
                 "550e8400-e29b-41d4-a716-446655440001",
                 "550e8400-e29b-41d4-a716-446655440002",
@@ -38,7 +38,7 @@ def test_create_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing
             "description": "Test Description",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "MEDIUM",
+            "priority": 5,
             "assignee_ids": [
                 "550e8400-e29b-41d4-a716-446655440001",
                 "550e8400-e29b-41d4-a716-446655440002",
@@ -68,7 +68,7 @@ def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_test
             "description": "Test Description",
             "due_date": make_future_due_date(),
             "status": "TO_DO",
-            "priority": "MEDIUM",
+            "priority": 5,
             "assignee_ids": [
                 "550e8400-e29b-41d4-a716-446655440001",
                 "550e8400-e29b-41d4-a716-446655440002"
@@ -80,7 +80,7 @@ def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_test
                 "description": "Test Description",
                 "due_date": make_future_due_date(),
                 "status": "TO_DO",
-                "priority": "MEDIUM",
+                "priority": 5,
                 "assignee_ids": [
                     "550e8400-e29b-41d4-a716-446655440001",
                     "550e8400-e29b-41d4-a716-446655440002",

@@ -62,7 +62,7 @@ def sample_main_task():
         "description": "This is a test main task",
         "due_date": (date.today() + timedelta(days=7)).isoformat(),
         "status": "TO_DO",
-        "priority": "HIGH",
+        "priority": 9,
         "assignee_ids": ["00000000-0000-0000-0000-000000000001"]
     }
 
@@ -76,7 +76,7 @@ def sample_subtasks():
             "description": "First test subtask",
             "due_date": (date.today() + timedelta(days=3)).isoformat(),
             "status": "TO_DO",
-            "priority": "MEDIUM",
+            "priority": 6,
             "assignee_ids": ["00000000-0000-0000-0000-000000000001"]
         },
         {
@@ -84,7 +84,7 @@ def sample_subtasks():
             "description": "Second test subtask without assignees",
             "due_date": (date.today() + timedelta(days=5)).isoformat(),
             "status": "TO_DO",
-            "priority": "LOW"
+            "priority": 2
         }
     ]
 

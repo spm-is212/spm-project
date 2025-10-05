@@ -93,7 +93,7 @@ class TaskUpdater:
             if main_task.status:
                 main_task_dict[STATUS_FIELD] = main_task.status.value
             if main_task.priority:
-                main_task_dict[PRIORITY_FIELD] = main_task.priority.value
+                main_task_dict[PRIORITY_FIELD] = main_task.priority
             if main_task.assignee_ids is not None:
                 current_task = self.crud.select(self.table_name, filters={TASK_ID_FIELD: main_task_id})
                 if current_task:
@@ -154,7 +154,7 @@ class TaskUpdater:
                 if subtask_data.status:
                     subtask_dict[STATUS_FIELD] = subtask_data.status.value
                 if subtask_data.priority:
-                    subtask_dict[PRIORITY_FIELD] = subtask_data.priority.value
+                    subtask_dict[PRIORITY_FIELD] = subtask_data.priority
 
                 if subtask_data.assignee_ids is not None:
                     current_subtask = self.crud.select(self.table_name, filters={TASK_ID_FIELD: subtask_id})
@@ -204,7 +204,7 @@ class TaskUpdater:
                     DESCRIPTION_FIELD: new_subtask.description,
                     DUE_DATE_FIELD: new_subtask.due_date.isoformat(),
                     STATUS_FIELD: new_subtask.status.value,
-                    PRIORITY_FIELD: new_subtask.priority.value,
+                    PRIORITY_FIELD: new_subtask.priority,
                     ASSIGNEE_IDS_FIELD: new_subtask.assignee_ids or [],
                     PARENT_ID_FIELD: main_task_id,
                     OWNER_USER_ID_FIELD: user_id,
