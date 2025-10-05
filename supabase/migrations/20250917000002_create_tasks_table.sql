@@ -1,7 +1,7 @@
 -- Create tasks table
 CREATE TABLE IF NOT EXISTS tasks (
-  uuid TEXT PRIMARY KEY,
-  user_uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+  uuid uuid PRIMARY KEY,
+  user_uuid uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL,
