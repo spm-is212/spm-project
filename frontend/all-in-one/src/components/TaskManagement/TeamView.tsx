@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Users, Building, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Users, Building, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
+import { API_ENDPOINTS } from '../../config/api';
 import type { Task, User as UserType } from '../../types/Task';
 
 interface Project {
   id: string;
   name: string;
   description?: string;
-  team_id: string;
+  collaborator_ids: string[];
+  team_id?: string; // Deprecated, for backward compatibility
+  created_by?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 interface TaskWithProject extends Omit<Task, 'owner_user_id' | 'is_archived'> {
@@ -43,43 +47,47 @@ const TeamView = () => {
 
   // Filters
   const [selectedTeam, setSelectedTeam] = useState<string>('');
-  const [selectedMember, setSelectedMember] = useState<string>('all');
-  const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('due_date');
+  const [sortBy, setSortBy] = useState<string>('priority');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const user = getUserFromToken();
+    console.log('[TeamView] User from token:', user);
     if (user) {
-      setUserInfo({
+      const userInfoData = {
         email: '', // Email not available from token
         role: user.role || '',
         department: user.department || '',
         department_id: user.department || '',
         user_id: user.id || ''
-      });
+      };
+      console.log('[TeamView] Setting userInfo:', userInfoData);
+      setUserInfo(userInfoData);
+    } else {
+      console.log('[TeamView] No user from token!');
     }
   }, []);
 
-  // Fetch user's teams in their department
+  // Fetch user's teams
   const fetchTeams = useCallback(async () => {
     try {
-      const data = await apiFetch("teams/my-teams");
+      const data = await apiFetch(API_ENDPOINTS.TEAMS.MY_TEAMS);
 
-      // Transform string array to Team objects if needed (backend returns strings currently)
-      let teamsData = data.teams || [];
-      if (teamsData.length > 0 && typeof teamsData[0] === 'string') {
-        teamsData = teamsData.map((teamName: string, index: number) => ({
-          id: `team${index + 1}`,
-          name: teamName,
-          member_count: 0
-        }));
-      }
+      // Backend should return team objects with valid UUIDs
+      const teamsData = data.teams || [];
 
-      setTeams(teamsData);
-      if (teamsData.length > 0 && !selectedTeam) {
-        setSelectedTeam(teamsData[0].id || '');
+      // Validate that we have proper team objects with UUIDs
+      const validTeams = teamsData.filter((team: Team) =>
+        team && typeof team === 'object' && team.id && team.name
+      );
+
+      setTeams(validTeams);
+      if (validTeams.length > 0 && !selectedTeam) {
+        setSelectedTeam(validTeams[0].id || '');
       }
     } catch (err: unknown) {
       console.error(`Failed to fetch teams: ${err instanceof Error ? err.message : String(err)}`);
@@ -87,29 +95,42 @@ const TeamView = () => {
     }
   }, [selectedTeam]);
 
-  // Fetch projects for selected team(s)
+  // Fetch all projects accessible to the user
   const fetchProjects = useCallback(async () => {
     try {
-      const endpoint = selectedTeam && selectedTeam !== ''
-        ? `projects/list?team_id=${selectedTeam}`
-        : 'projects/list';
-      const data = await apiFetch(endpoint);
-      setProjects(data || []);
+      // Fetch all projects the user has access to
+      const data = await apiFetch(API_ENDPOINTS.PROJECTS.LIST);
+      const allProjects = data || [];
+
+      console.log('[TeamView] Fetched projects:', allProjects.length, allProjects);
+      setProjects(allProjects);
     } catch (err: unknown) {
       console.error(`Failed to fetch projects: ${err instanceof Error ? err.message : String(err)}`);
+      setProjects([]);
     }
-  }, [selectedTeam]);
+  }, []);
 
-  // Fetch tasks from backend
+  // Fetch tasks from backend - returns tasks user has access to (as assignee or via role)
   const fetchTeamTasks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch("tasks/readTasks");
+      // Use filter endpoint if date range is set, otherwise use regular read
+      let endpoint: string = API_ENDPOINTS.TASKS.READ;
+      const params = new URLSearchParams();
+
+      if (startDate || endDate) {
+        endpoint = API_ENDPOINTS.TASKS.FILTER_BY_DUE_DATE;
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+      }
+
+      const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
+      const data = await apiFetch(url);
       const tasksData = data.tasks || [];
 
       // Transform tasks to include parent/subtask information
-      const transformedTasks: TaskWithProject[] = tasksData.map((task: any) => ({
+      const transformedTasks: TaskWithProject[] = tasksData.map((task: TaskWithProject) => ({
         ...task,
         isSubtask: task.parent_id !== null && task.parent_id !== undefined,
         parent_id: task.parent_id,
@@ -117,73 +138,57 @@ const TeamView = () => {
         project_name: task.project_name,
       }));
 
+      // Tasks are already filtered by backend access control:
+      // - Directors/Managing Directors: see all tasks in their scope
+      // - Regular users: see tasks where they are assignees
       setTasks(transformedTasks);
       setFilteredTasks(transformedTasks);
     } catch (err: unknown) {
-      setError(`Failed to fetch team tasks: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Failed to fetch tasks: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   // Fetch team members
   const fetchTeamMembers = useCallback(async () => {
     try {
-      const data = await apiFetch("auth/users");
+      const data = await apiFetch(API_ENDPOINTS.AUTH.USERS);
       setTeamMembers(data.users || []);
     } catch (err: unknown) {
       console.error(`Failed to fetch team members: ${err instanceof Error ? err.message : String(err)}`);
     }
   }, []);
 
-  // Apply filters and sorting
+  // Apply sorting only (no filtering)
   useEffect(() => {
-    let filtered = [...tasks];
+    let sorted = [...tasks];
 
-    // Filter by team
-    if (selectedTeam !== '' && selectedTeam !== 'all') {
-      const teamProjects = projects.filter(p => p.team_id === selectedTeam).map(p => p.id);
-      filtered = filtered.filter(task => teamProjects.includes(task.project_id || ''));
-    }
-
-    // Filter by project
-    if (selectedProject !== 'all') {
-      filtered = filtered.filter(task => task.project_id === selectedProject);
-    }
-
-    // Filter by team member
-    if (selectedMember !== 'all') {
-      filtered = filtered.filter(task =>
-        task.assignee_ids && task.assignee_ids.includes(selectedMember)
-      );
-    }
-
-    // Filter by status
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(task => task.status === selectedStatus);
-    }
-
-    // Sort tasks
-    filtered.sort((a, b) => {
+    // Sort tasks (priority, status, title only - no due_date)
+    const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+    sorted.sort((a, b) => {
+      let result = 0;
       switch (sortBy) {
-        case 'due_date':
-          if (!a.due_date) return 1;
-          if (!b.due_date) return -1;
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-        case 'priority':
-          const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-          return (priorityOrder[a.priority?.toUpperCase()] || 3) - (priorityOrder[b.priority?.toUpperCase()] || 3);
-        case 'status':
-          return (a.status || '').localeCompare(b.status || '');
-        case 'title':
-          return a.title.localeCompare(b.title);
+        case 'priority': {
+          result = (priorityOrder[a.priority?.toUpperCase()] || 3) - (priorityOrder[b.priority?.toUpperCase()] || 3);
+          break;
+        }
+        case 'status': {
+          result = (a.status || '').localeCompare(b.status || '');
+          break;
+        }
+        case 'title': {
+          result = a.title.localeCompare(b.title);
+          break;
+        }
         default:
           return 0;
       }
+      return sortOrder === 'asc' ? result : -result;
     });
 
-    setFilteredTasks(filtered);
-  }, [tasks, selectedTeam, selectedProject, selectedMember, selectedStatus, sortBy, projects]);
+    setFilteredTasks(sorted);
+  }, [tasks, sortBy, sortOrder]);
 
   // Load data on mount
   useEffect(() => {
@@ -191,17 +196,54 @@ const TeamView = () => {
     fetchTeams();
     fetchTeamMembers();
     fetchTeamTasks();
-  }, [fetchTeams, fetchTeamMembers, fetchTeamTasks]);
-
-  // Reload projects when team changes
-  useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+  }, [fetchTeams, fetchTeamMembers, fetchTeamTasks, fetchProjects]);
 
-  // Get filtered projects based on selected team
-  const getFilteredProjects = () => {
-    if (selectedTeam === '' || selectedTeam === 'all') return projects;
-    return projects.filter(p => p.team_id === selectedTeam);
+  // Get projects where current user is a collaborator or has tasks assigned
+  const getUserCollaboratorProjects = () => {
+    if (!userInfo?.user_id) {
+      console.log('[TeamView] No user_id, returning empty projects');
+      return [];
+    }
+
+    const userId = userInfo.user_id;
+    const userRole = userInfo.role?.toLowerCase();
+
+    console.log('[TeamView] getUserCollaboratorProjects - userId:', userId, 'role:', userRole, 'total projects:', projects.length);
+
+    // Directors and Managing Directors see ALL projects (backend already filtered)
+    if (userRole === 'director' || userRole === 'managing_director') {
+      console.log('[TeamView] Director/MD - returning all projects:', projects.length);
+      return projects;
+    }
+
+    // Method 1: Check if user is in collaborator_ids (primary method)
+    const directCollaboratorProjects = projects.filter(p =>
+      p.collaborator_ids && p.collaborator_ids.includes(userId)
+    );
+    console.log('[TeamView] Direct collaborator projects:', directCollaboratorProjects.length);
+
+    // Method 2: Also include projects where user has tasks (fallback/additional)
+    const userTaskProjectIds = new Set<string>();
+    tasks.forEach(task => {
+      // Check if user is owner or assignee
+      const isUserTask = task.owner_user_id === userId ||
+                        task.assignee_ids?.includes(userId);
+      if (isUserTask && task.project_id) {
+        userTaskProjectIds.add(task.project_id);
+      }
+    });
+    console.log('[TeamView] Task-based project IDs:', userTaskProjectIds.size);
+
+    // Combine both methods and remove duplicates
+    const allCollaboratorProjectIds = new Set([
+      ...directCollaboratorProjects.map(p => p.id),
+      ...userTaskProjectIds
+    ]);
+
+    const result = projects.filter(p => allCollaboratorProjectIds.has(p.id));
+    console.log('[TeamView] Final user projects:', result.length);
+    return result;
   };
 
   // Calculate task statistics
@@ -228,8 +270,21 @@ const TeamView = () => {
   const stats = getTaskStats();
 
   // Get priority and status colors
-  const getPriorityColor = (priority: string | undefined): string => {
-    switch (priority?.toUpperCase()) {
+  const getPriorityLabel = (priority: string | number | undefined): string => {
+    if (typeof priority === 'number') {
+      switch (priority) {
+        case 1: return 'LOW';
+        case 2: return 'MEDIUM';
+        case 3: return 'HIGH';
+        default: return 'UNKNOWN';
+      }
+    }
+    return (priority || 'UNKNOWN').toString().toUpperCase();
+  };
+
+  const getPriorityColor = (priority: string | number | undefined): string => {
+    const label = getPriorityLabel(priority);
+    switch (label) {
       case 'HIGH': return 'text-red-600 bg-red-100';
       case 'MEDIUM': return 'text-yellow-600 bg-yellow-100';
       case 'LOW': return 'text-green-600 bg-green-100';
@@ -277,6 +332,18 @@ const TeamView = () => {
     });
   };
 
+  const toggleProjectExpansion = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="mb-8">
@@ -291,9 +358,9 @@ const TeamView = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-green-600" />
+                <Folder className="w-5 h-5 text-green-600" />
                 <span className="text-gray-700">
-                  <strong>Projects:</strong> {teams.length}
+                  <strong>My Projects:</strong> {getUserCollaboratorProjects().length} {getUserCollaboratorProjects().length === 1 ? 'Project' : 'Projects'}
                 </span>
               </div>
               <span className="text-gray-700">
@@ -318,66 +385,86 @@ const TeamView = () => {
         </div>
       )}
 
-      {/* Teams List */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
-        <div className="flex items-center mb-4">
-          <Users className="w-5 h-5 text-gray-600 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-900">My Projects</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {teams.length === 0 ? (
-            <div className="col-span-3 text-center py-8 text-gray-500">
-              {loading ? 'Loading projects...' : 'You are not assigned to any projects yet.'}
-            </div>
-          ) : (
-            teams.map(team => (
-              <div
-                key={team.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  selectedTeam === team.id
-                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow'
-                }`}
-                onClick={() => setSelectedTeam(team.id)}
-              >
-                <h3 className="font-semibold text-gray-900">{team.name}</h3>
-                {team.member_count !== undefined && (
-                  <p className="text-sm text-gray-600 mt-2">{team.member_count} members</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  {projects.filter(p => p.team_id === team.id).length} projects
-                </p>
+      {/* Teams List - Hidden for Staff */}
+      {userInfo?.role?.toLowerCase() !== 'staff' && (
+        <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
+          <div className="flex items-center mb-4">
+            <Users className="w-5 h-5 text-gray-600 mr-2" />
+            <h2 className="text-lg font-semibold text-gray-900">My Teams</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {teams.length === 0 ? (
+              <div className="col-span-3 text-center py-8 text-gray-500">
+                {loading ? 'Loading projects...' : 'You are not assigned to any projects yet.'}
               </div>
-            ))
-          )}
+            ) : (
+              teams.map(team => (
+                <div
+                  key={team.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    selectedTeam === team.id
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow'
+                  }`}
+                  onClick={() => setSelectedTeam(team.id)}
+                >
+                  <h3 className="font-semibold text-gray-900">{team.name}</h3>
+                  {team.member_count !== undefined && (
+                    <p className="text-sm text-gray-600 mt-2">{team.member_count} members</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {projects.filter(p => p.team_id === team.id).length} projects
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-          <div className="text-sm text-gray-600">Total</div>
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-1">
+            <Folder className="w-5 h-5 text-gray-500" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+          <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Tasks</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
-          <div className="text-sm text-gray-600">Done</div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg shadow-sm border border-green-200">
+          <div className="flex items-center justify-between mb-1">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="text-3xl font-bold text-green-700">{stats.completed}</div>
+          <div className="text-xs font-medium text-green-700 uppercase tracking-wide">Completed</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-          <div className="text-sm text-gray-600">Active</div>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg shadow-sm border border-blue-200">
+          <div className="flex items-center justify-between mb-1">
+            <Clock className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="text-3xl font-bold text-blue-700">{stats.inProgress}</div>
+          <div className="text-xs font-medium text-blue-700 uppercase tracking-wide">In Progress</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-gray-600">{stats.pending}</div>
-          <div className="text-sm text-gray-600">Pending</div>
+        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg shadow-sm border border-yellow-200">
+          <div className="flex items-center justify-between mb-1">
+            <Clock className="w-5 h-5 text-yellow-600" />
+          </div>
+          <div className="text-3xl font-bold text-yellow-700">{stats.pending}</div>
+          <div className="text-xs font-medium text-yellow-700 uppercase tracking-wide">To Do</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-orange-600">{stats.blocked}</div>
-          <div className="text-sm text-gray-600">Blocked</div>
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg shadow-sm border border-orange-200">
+          <div className="flex items-center justify-between mb-1">
+            <XCircle className="w-5 h-5 text-orange-600" />
+          </div>
+          <div className="text-3xl font-bold text-orange-700">{stats.blocked}</div>
+          <div className="text-xs font-medium text-orange-700 uppercase tracking-wide">Blocked</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
-          <div className="text-sm text-gray-600">Overdue</div>
+        <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg shadow-sm border border-red-200">
+          <div className="flex items-center justify-between mb-1">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+          </div>
+          <div className="text-3xl font-bold text-red-700">{stats.overdue}</div>
+          <div className="text-xs font-medium text-red-700 uppercase tracking-wide">Overdue</div>
         </div>
       </div>
 
@@ -398,84 +485,75 @@ const TeamView = () => {
         </div>
       </div>
 
-      {/* Filters */}
+
+      {/* Filter and Sort Combined */}
       <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-        <div className="flex items-center mb-3">
+        <div className="flex items-center mb-4">
           <Filter className="w-5 h-5 text-gray-600 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-900">Filters & Sorting</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Filter & Sort Tasks</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Projects</option>
-              {getFilteredProjects().map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+
+        <div className="flex flex-wrap gap-4 items-end">
+          {/* Date Filter Section */}
+          <div className="flex-1 min-w-[300px]">
+            <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Member</label>
-            <select
-              value={selectedMember}
-              onChange={(e) => setSelectedMember(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Members</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.username || member.email?.split('@')[0]}
-                </option>
-              ))}
-            </select>
+          <div className="flex-1 min-w-[300px]">
+            <label className="block text-xs text-gray-600 mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Statuses</option>
-              <option value="TO_DO">Pending</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="BLOCKED">Blocked</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+          <button
+            onClick={() => {
+              setStartDate('');
+              setEndDate('');
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700 whitespace-nowrap"
+          >
+            Clear
+          </button>
+
+          {/* Sort Section */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs text-gray-600 mb-1">Sort By</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
-              <option value="due_date">Due Date</option>
               <option value="priority">Priority</option>
               <option value="status">Status</option>
               <option value="title">Title</option>
             </select>
           </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setSelectedMember('all');
-                setSelectedProject('all');
-                setSelectedStatus('all');
-                setSortBy('due_date');
-              }}
-              className="w-full p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Clear Filters
-            </button>
-          </div>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center"
+            title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+          >
+            {sortOrder === 'asc' ? (
+              <ArrowUp className="w-5 h-5 text-blue-600" />
+            ) : (
+              <ArrowDown className="w-5 h-5 text-blue-600" />
+            )}
+          </button>
         </div>
+
+        {(startDate || endDate) && (
+          <div className="mt-2 text-xs text-blue-600">
+            Filtering tasks {startDate && `from ${startDate}`} {startDate && endDate && 'to'} {endDate && endDate}
+          </div>
+        )}
       </div>
 
       {/* Loading State */}
@@ -486,142 +564,186 @@ const TeamView = () => {
         </div>
       )}
 
-      {/* Tasks List */}
+      {/* Cross-Functional Project → Task → Subtask View */}
       {!loading && (
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Tasks ({filteredTasks.filter(t => !t.isSubtask).length})
-            </h2>
-          </div>
-          <div className="divide-y">
-            {filteredTasks.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                No tasks found matching the selected filters.
-              </div>
-            ) : (
-              filteredTasks
-                .filter(task => !task.isSubtask)
-                .map((task) => {
-                  const subtasks = filteredTasks.filter(t => t.isSubtask && t.parent_id === task.id);
-                  const isExpanded = expandedTasks.has(task.id);
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">My Projects</h2>
 
-                  return (
-                    <div key={task.id}>
-                      {/* Parent Task */}
-                      <div className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              {task.project_name && (
-                                <span className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                  <Folder className="w-3 h-3 mr-1" />
-                                  {task.project_name}
-                                </span>
-                              )}
-                              {subtasks.length > 0 && (
-                                <button
-                                  onClick={() => toggleTaskExpansion(task.id)}
-                                  className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-3 h-3 mr-1" />
-                                  ) : (
-                                    <ChevronRight className="w-3 h-3 mr-1" />
-                                  )}
-                                  {subtasks.filter(st => st.status === 'COMPLETED').length}/{subtasks.length} subtasks
-                                </button>
-                              )}
-                            </div>
-                            <h3 className="text-base font-semibold text-gray-900 mb-1">
-                              {task.title}
-                            </h3>
-                            {task.description && (
-                              <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                                {getStatusIcon(task.status)}
-                                <span className="ml-1">{task.status?.replace('_', ' ')}</span>
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                {task.priority}
-                              </span>
-                              {task.due_date && (
-                                <span className={`flex items-center text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  {new Date(task.due_date).toLocaleDateString()}
-                                  {isOverdue(task.due_date, task.status) && ' (Overdue)'}
-                                </span>
-                              )}
-                              {task.assignee_ids && task.assignee_ids.length > 0 && (
-                                <span className="flex items-center text-xs text-gray-600">
-                                  <User className="w-3 h-3 mr-1" />
-                                  {task.assignee_ids.map(id => {
-                                    const member = teamMembers.find(m => m.id === id);
-                                    return member?.username || member?.email?.split('@')[0] || 'Unknown';
-                                  }).join(', ')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+          {getUserCollaboratorProjects().length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center text-gray-500">
+              <p className="text-lg font-semibold mb-2">No Projects Found</p>
+              <p className="text-sm">You are not currently a collaborator on any projects.</p>
+            </div>
+          ) : (
+            // Show only projects where current user is a collaborator
+            getUserCollaboratorProjects().map((project) => {
+              const projectTasks = filteredTasks.filter(t => t.project_id === project.id && !t.isSubtask);
+              const isProjectExpanded = expandedProjects.has(project.id);
+              const completedTasks = projectTasks.filter(t => t.status === 'COMPLETED').length;
+
+              return (
+                
+                <div key={project.id} className="bg-white rounded-lg shadow-sm border">
+                  
+                  <div
+                    className="p-4 bg-gradient-to-r from-green-50 to-green-100 border-b cursor-pointer hover:from-green-100 hover:to-green-150 transition-colors"
+                    onClick={() => toggleProjectExpansion(project.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 flex-1">
+                        {isProjectExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-green-600" />
+                        )}
+                        <Folder className="w-5 h-5 text-green-600" />
+                        <div className="flex-1">
+                          <h2 className="text-lg font-bold text-gray-900">{project.name}</h2>
+                          {project.description && (
+                            <p className="text-sm text-gray-600 mt-1">{project.description}</p>
+                          )}
+                          {project.collaborator_ids && project.collaborator_ids.length > 0 && (
+                            <p className="text-xs text-green-700 mt-1">
+                              Cross-functional • {project.collaborator_ids.length} {project.collaborator_ids.length === 1 ? 'collaborator' : 'collaborators'}
+                            </p>
+                          )}
                         </div>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {completedTasks}/{projectTasks.length} Tasks
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                      {/* Subtasks - Collapsible */}
-                      {subtasks.length > 0 && isExpanded && (
-                        <div className="bg-gray-50 border-l-4 border-purple-200">
-                          {subtasks.map((subtask) => (
-                            <div key={subtask.id} className="p-4 pl-8 hover:bg-gray-100 transition-colors border-t border-gray-200">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded font-medium">
-                                      Subtask
-                                    </span>
-                                  </div>
-                                  <h3 className="text-base font-medium text-gray-900 mb-1">
-                                    {subtask.title}
-                                  </h3>
-                                  {subtask.description && (
-                                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{subtask.description}</p>
-                                  )}
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
-                                      {getStatusIcon(subtask.status)}
-                                      <span className="ml-1">{subtask.status?.replace('_', ' ')}</span>
-                                    </span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
-                                      {subtask.priority}
-                                    </span>
-                                    {subtask.due_date && (
-                                      <span className={`flex items-center text-xs ${isOverdue(subtask.due_date, subtask.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                        <Calendar className="w-3 h-3 mr-1" />
-                                        {new Date(subtask.due_date).toLocaleDateString()}
-                                        {isOverdue(subtask.due_date, subtask.status) && ' (Overdue)'}
-                                      </span>
+                  {/* Project Tasks */}
+                  {isProjectExpanded && (
+                    <div className="bg-white divide-y">
+                      {projectTasks.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                          No tasks in this project yet.
+                        </div>
+                      ) : (
+                        projectTasks.map((task) => {
+                          const subtasks = filteredTasks.filter(t => t.isSubtask && t.parent_id === task.id);
+                          const isTaskExpanded = expandedTasks.has(task.id);
+
+                          return (
+                            <div key={task.id}>
+                              {/* Task */}
+                              <div className="p-4 pl-12 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      {subtasks.length > 0 && (
+                                        <button
+                                          onClick={() => toggleTaskExpansion(task.id)}
+                                          className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors"
+                                        >
+                                          {isTaskExpanded ? (
+                                            <ChevronDown className="w-3 h-3 mr-1" />
+                                          ) : (
+                                            <ChevronRight className="w-3 h-3 mr-1" />
+                                          )}
+                                          {subtasks.filter(st => st.status === 'COMPLETED').length}/{subtasks.length} subtasks
+                                        </button>
+                                      )}
+                                    </div>
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                      {task.title}
+                                    </h4>
+                                    {task.description && (
+                                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{task.description}</p>
                                     )}
-                                    {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
-                                      <span className="flex items-center text-xs text-gray-600">
-                                        <User className="w-3 h-3 mr-1" />
-                                        {subtask.assignee_ids.map(id => {
-                                          const member = teamMembers.find(m => m.id === id);
-                                          return member?.username || member?.email?.split('@')[0] || 'Unknown';
-                                        }).join(', ')}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                                        {getStatusIcon(task.status)}
+                                        <span className="ml-1">{task.status?.replace('_', ' ')}</span>
                                       </span>
-                                    )}
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                        {getPriorityLabel(task.priority)}
+                                      </span>
+                                      {task.due_date && (
+                                        <span className={`flex items-center text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                          <Calendar className="w-3 h-3 mr-1" />
+                                          {new Date(task.due_date).toLocaleDateString()}
+                                          {isOverdue(task.due_date, task.status) && ' (Overdue)'}
+                                        </span>
+                                      )}
+                                      {task.assignee_ids && task.assignee_ids.length > 0 && (
+                                        <span className="flex items-center text-xs text-gray-600">
+                                          <User className="w-3 h-3 mr-1" />
+                                          {task.assignee_ids.map(id => {
+                                            const member = teamMembers.find(m => m.id === id);
+                                            return member?.username || member?.email?.split('@')[0] || 'Unknown';
+                                          }).join(', ')}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Subtasks */}
+                              {subtasks.length > 0 && isTaskExpanded && (
+                                <div className="bg-purple-50 border-l-4 border-purple-300">
+                                  {subtasks.map((subtask) => (
+                                    <div key={subtask.id} className="p-3 pl-20 hover:bg-purple-100 transition-colors border-t border-purple-200">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center space-x-2 mb-1">
+                                            <span className="text-xs text-purple-700 bg-purple-200 px-2 py-0.5 rounded font-medium">
+                                              Subtask
+                                            </span>
+                                          </div>
+                                          <h5 className="text-sm font-medium text-gray-900 mb-1">
+                                            {subtask.title}
+                                          </h5>
+                                          {subtask.description && (
+                                            <p className="text-xs text-gray-600 mb-2 line-clamp-1">{subtask.description}</p>
+                                          )}
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subtask.status)}`}>
+                                              {getStatusIcon(subtask.status)}
+                                              <span className="ml-1">{subtask.status?.replace('_', ' ')}</span>
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(subtask.priority)}`}>
+                                              {getPriorityLabel(subtask.priority)}
+                                            </span>
+                                            {subtask.due_date && (
+                                              <span className={`flex items-center text-xs ${isOverdue(subtask.due_date, subtask.status) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                                <Calendar className="w-3 h-3 mr-1" />
+                                                {new Date(subtask.due_date).toLocaleDateString()}
+                                                {isOverdue(subtask.due_date, subtask.status) && ' (Overdue)'}
+                                              </span>
+                                            )}
+                                            {subtask.assignee_ids && subtask.assignee_ids.length > 0 && (
+                                              <span className="flex items-center text-xs text-gray-600">
+                                                <User className="w-3 h-3 mr-1" />
+                                                {subtask.assignee_ids.map(id => {
+                                                  const member = teamMembers.find(m => m.id === id);
+                                                  return member?.username || member?.email?.split('@')[0] || 'Unknown';
+                                                }).join(', ')}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })
                       )}
                     </div>
-                  );
-                })
-            )}
-          </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </div>
