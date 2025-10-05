@@ -19,6 +19,7 @@ class Task:
     owner_user_id: str
     assignee_ids: List[str]
     comments: List[Dict[str, Any]]
+    file_url: Optional[str]
     attachments: List[Dict[str, Any]]
     is_archived: bool
     created_at: datetime
