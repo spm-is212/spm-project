@@ -86,8 +86,6 @@ class TaskUpdater:
                 main_task_dict[STATUS_FIELD] = main_task.status.value
             if main_task.priority:
                 main_task_dict[PRIORITY_FIELD] = main_task.priority
-
-            # --- Handle assignee updates ---
             if main_task.assignee_ids is not None:
                 current_task = self.crud.select(self.table_name, filters={TASK_ID_FIELD: main_task_id})
                 if current_task:
