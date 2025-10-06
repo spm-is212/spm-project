@@ -38,7 +38,7 @@ class TestTaskUpdater:
     def test_update_main_task_status_and_priority(self, mock_crud, mock_task_in_db):
         """Test updating status and priority fields"""
         # Arrange
-        updated_task = {**mock_task_in_db, "status": "IN_PROGRESS", "priority": "MEDIUM"}
+        updated_task = {**mock_task_in_db, "status": "IN_PROGRESS", "priority": 2}
         mock_crud.update.return_value = [updated_task]
 
         updater = TaskUpdater()
@@ -46,7 +46,7 @@ class TestTaskUpdater:
 
         update_data = TaskUpdate(
             status="IN_PROGRESS",
-            priority="MEDIUM"
+            priority=2
         )
 
         # Act
@@ -55,7 +55,7 @@ class TestTaskUpdater:
         # Assert
         call_args = mock_crud.update.call_args[0][1]
         assert call_args["status"] == "IN_PROGRESS"
-        assert call_args["priority"] == "MEDIUM"
+        assert call_args["priority"] == 2
 
     def test_update_main_task_due_date(self, mock_crud, mock_task_in_db):
         """Test updating due date converts to ISO format"""

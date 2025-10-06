@@ -19,19 +19,13 @@ class RecurrenceRule(str, Enum):
     WEEKLY = "WEEKLY"
     MONTHLY = "MONTHLY"
 
-class TaskPriority(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-
-
 class TaskCreate(BaseModel):
     title: str
     description: str
     project_id: Optional[str] = Field(None, description="Optional: Project ID that this task belongs to")
     due_date: date
     status: TaskStatus = TaskStatus.TO_DO
-    priority: TaskPriority
+    priority: int
     assignee_ids: List[str]
     parent_id: Optional[str] = Field(default=MAIN_TASK_PARENT_ID)
 
@@ -52,6 +46,13 @@ class TaskCreate(BaseModel):
     def description_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Description cannot be empty")
+        return v
+    
+    @field_validator("priority")
+    @classmethod
+    def priority_between_1_and_10(cls, v: int) -> int:
+        if v < 1 or v > 10:
+            raise ValueError("Priority must be between 1 and 10")
         return v
 
     @field_validator("assignee_ids")
@@ -89,7 +90,7 @@ class SubtaskCreate(BaseModel):
     project_id: Optional[str] = Field(None, description="Optional: Project ID that this subtask belongs to")
     due_date: date
     status: TaskStatus = TaskStatus.TO_DO
-    priority: TaskPriority
+    priority: int
     assignee_ids: Optional[List[str]] = None
     parent_id: Optional[str] = None
     recurrence_rule: Optional[RecurrenceRule] = None
@@ -116,6 +117,13 @@ class SubtaskCreate(BaseModel):
         if v is not None and len(v) > 5:
             raise ValueError("Maximum of 5 assignees allowed per subtask")
         return v
+    
+    @field_validator("priority")
+    @classmethod
+    def priority_between_1_and_10(cls, v: int) -> int:
+        if v < 1 or v > 10:
+            raise ValueError("Priority must be between 1 and 10")
+        return v
 
     @field_validator("due_date")
     @classmethod
@@ -131,7 +139,7 @@ class TaskUpdate(BaseModel):
     project_id: Optional[str] = Field(None, description="Project ID that this task belongs to")
     due_date: Optional[date] = None
     status: Optional[TaskStatus] = None
-    priority: Optional[TaskPriority] = None
+    priority: Optional[int] = None
     assignee_ids: Optional[List[str]] = None
     is_archived: Optional[bool] = None
 
@@ -159,6 +167,13 @@ class TaskUpdate(BaseModel):
     def assignee_ids_not_empty_if_provided(cls, v: Optional[List[str]]) -> Optional[List[str]]:
         if v is not None and len(v) > 5:
             raise ValueError("Maximum of 5 assignees allowed per task")
+        return v
+    
+    @field_validator("priority")
+    @classmethod
+    def priority_between_1_and_10(cls, v: int) -> int:
+        if v < 1 or v > 10:
+            raise ValueError("Priority must be between 1 and 10")
         return v
 
     @field_validator("due_date")
@@ -188,7 +203,7 @@ class SubtaskUpdate(BaseModel):
     description: Optional[str] = None
     due_date: Optional[date] = None
     status: Optional[TaskStatus] = None
-    priority: Optional[TaskPriority] = None
+    priority: Optional[int] = None
     assignee_ids: Optional[List[str]] = None
     is_archived: Optional[bool] = None
 
@@ -204,6 +219,13 @@ class SubtaskUpdate(BaseModel):
     def description_not_empty(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and not v.strip():
             raise ValueError("Description cannot be empty")
+        return v
+    
+    @field_validator("priority")
+    @classmethod
+    def priority_between_1_and_10(cls, v: int) -> int:
+        if v < 1 or v > 10:
+            raise ValueError("Priority must be between 1 and 10")
         return v
 
     @field_validator("assignee_ids")

@@ -17,7 +17,7 @@ def sample_task_data():
         "description": "Test description",
         "due_date": (date.today() + timedelta(days=7)).isoformat(),
         "status": "TO_DO",
-        "priority": "HIGH",
+        "priority": 9,
         "owner_user_id": "00000000-0000-0000-0000-000000000001",
         "assignee_ids": ["00000000-0000-0000-0000-000000000001"],
         "parent_id": None,
@@ -35,7 +35,7 @@ def sample_subtask_data():
         "description": "Test subtask description",
         "due_date": (date.today() + timedelta(days=3)).isoformat(),
         "status": "TO_DO",
-        "priority": "MEDIUM",
+        "priority": 5,
         "assignee_ids": ["00000000-0000-0000-0000-000000000001"]
     }
 
@@ -49,7 +49,7 @@ def mock_task_in_db():
         "description": "Existing description",
         "due_date": make_future_due_date(),
         "status": "TO_DO",
-        "priority": "HIGH",
+        "priority": 8,
         "owner_user_id": "00000000-0000-0000-0000-000000000001",
         "assignee_ids": ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"],
         "parent_id": None,
