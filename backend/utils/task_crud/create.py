@@ -1,3 +1,5 @@
+from datetime import timedelta, datetime
+from dateutil.relativedelta import relativedelta  # handles monthly recurrences cleanly
 from typing import List, Dict, Any, Optional
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.schemas.task import TaskCreate, MAIN_TASK_PARENT_ID
@@ -22,7 +24,6 @@ from backend.utils.task_crud.constants import (
     DEFAULT_IS_ARCHIVED,
 )
 
-
 class TaskCreator:
     """
     Task creation utilities
@@ -31,6 +32,29 @@ class TaskCreator:
     def __init__(self):
         self.crud = SupabaseCRUD()
         self.table_name = TASKS_TABLE_NAME
+
+    def _generate_recurrence_dates(self, start_date: datetime, rule: str, interval: int, end_date: Optional[datetime]) -> List[datetime]:
+        """Generate due dates based on recurrence rule."""
+        if not rule:
+            return [start_date]
+        if not interval or interval <= 0:
+            interval = 1
+
+        dates = []
+        current = start_date
+        limit = end_date or start_date
+
+        while current <= limit:
+            dates.append(current)
+            if rule == "DAILY":
+                current += timedelta(days=interval)
+            elif rule == "WEEKLY":
+                current += timedelta(weeks=interval)
+            elif rule == "MONTHLY":
+                current += relativedelta(months=interval)
+            else:
+                break  # Unsupported rule
+        return dates
 
     def create_task_with_subtasks(self, user_id: str, main_task: TaskCreate, subtasks: Optional[List[TaskCreate]] = None) -> Dict[str, Any]:
         assignee_ids = list(main_task.assignee_ids) if main_task.assignee_ids else []
@@ -49,23 +73,30 @@ class TaskCreator:
             COMMENTS_FIELD: DEFAULT_COMMENTS,
             ATTACHMENTS_FIELD: DEFAULT_ATTACHMENTS,
             IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED,
-           "recurrence_rule": main_task.recurrence_rule.value if main_task.recurrence_rule else None,
+            "recurrence_rule": main_task.recurrence_rule.value if main_task.recurrence_rule else None,
             "recurrence_interval": main_task.recurrence_interval,
             "recurrence_end_date": main_task.recurrence_end_date.isoformat() if main_task.recurrence_end_date else None,
         }
-        if main_task.project_id is not None:
-            main_task_dict["project_id"] = main_task.project_id
 
-        # Only include project_id if provided
         if main_task.project_id is not None:
             main_task_dict["project_id"] = main_task.project_id
 
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
+        result = {MAIN_TASK_KEY: created_main_task, SUBTASKS_RESPONSE_KEY: []}
 
-        result = {
-            MAIN_TASK_KEY: created_main_task,
-            SUBTASKS_RESPONSE_KEY: []
-        }
+        if main_task.recurrence_rule:
+            recurrence_dates = self._generate_recurrence_dates(
+                start_date=main_task.due_date,
+                rule=main_task.recurrence_rule.value,
+                interval=main_task.recurrence_interval or 1,
+                end_date=main_task.recurrence_end_date,
+            )
+
+            for due_date in recurrence_dates[1:]:
+                instance_dict = {**main_task_dict}
+                instance_dict[DUE_DATE_FIELD] = due_date.isoformat()
+                instance_dict[PARENT_ID_FIELD] = created_main_task[TASK_ID_FIELD]
+                self.crud.insert(self.table_name, instance_dict)
 
         if subtasks:
             for subtask_data in subtasks:
@@ -88,12 +119,8 @@ class TaskCreator:
                     "recurrence_rule": subtask_data.recurrence_rule.value if subtask_data.recurrence_rule else None,
                     "recurrence_interval": subtask_data.recurrence_interval,
                     "recurrence_end_date": subtask_data.recurrence_end_date.isoformat() if subtask_data.recurrence_end_date else None,
-
                 }
-                if subtask_data.project_id is not None:
-                    subtask_dict["project_id"] = subtask_data.project_id
 
-                # Only include project_id if provided
                 if subtask_data.project_id is not None:
                     subtask_dict["project_id"] = subtask_data.project_id
 

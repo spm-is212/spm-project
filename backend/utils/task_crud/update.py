@@ -1,6 +1,8 @@
 from typing import Dict, Any, Optional, List
+from datetime import datetime
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.schemas.task import TaskUpdate, SubtaskCreate, MAIN_TASK_PARENT_ID
+from backend.utils.task_crud.create import TaskCreator
 from backend.utils.task_crud.constants import (
     TASKS_TABLE_NAME,
     ASSIGNEE_REMOVAL_ROLES,
@@ -24,9 +26,7 @@ from backend.utils.task_crud.constants import (
 
 
 class TaskUpdater:
-    """
-    Task update utilities
-    """
+    """Task update utilities"""
 
     def __init__(self):
         self.crud = SupabaseCRUD()
@@ -42,7 +42,6 @@ class TaskUpdater:
         """
         if user_role in ASSIGNEE_REMOVAL_ROLES:
             return True
-
         return any(team in PRIVILEGED_TEAMS for team in user_teams)
 
     def _validate_main_task_archival(self, main_task_id: str, is_archived: bool) -> bool:
@@ -50,7 +49,6 @@ class TaskUpdater:
             return True
 
         subtasks = self.crud.select(self.table_name, filters={PARENT_ID_FIELD: main_task_id})
-
         if not subtasks:
             return True
 
@@ -59,22 +57,16 @@ class TaskUpdater:
                 return False
         return True
 
-
-    def update_tasks(self, main_task_id: str, user_id: str, user_role: str, user_teams: list, main_task: Optional[TaskUpdate] = None, subtasks: Optional[Dict[str, TaskUpdate]] = None, new_subtasks: Optional[List[SubtaskCreate]] = None) -> Dict[str, Any]:
-        """
-        Update main task and/or subtasks
-
-        Args:
-            main_task_id: ID of the main task
-            user_id: ID of the user updating the tasks
-            user_role: Role of the user updating the tasks
-            user_teams: Teams the user belongs to
-            main_task: Optional main task update data
-            subtasks: Optional dictionary of {subtask_id: TaskUpdate} for updates
-
-        Returns:
-            Dictionary containing updated main task and subtasks
-        """
+    def update_tasks(
+        self,
+        main_task_id: str,
+        user_id: str,
+        user_role: str,
+        user_teams: list,
+        main_task: Optional[TaskUpdate] = None,
+        subtasks: Optional[Dict[str, TaskUpdate]] = None,
+        new_subtasks: Optional[List[SubtaskCreate]] = None,
+    ) -> Dict[str, Any]:
         result = {
             MAIN_TASK_RESPONSE_KEY: None,
             UPDATED_SUBTASKS_RESPONSE_KEY: []
@@ -94,28 +86,29 @@ class TaskUpdater:
                 main_task_dict[STATUS_FIELD] = main_task.status.value
             if main_task.priority:
                 main_task_dict[PRIORITY_FIELD] = main_task.priority
+
+            # --- Handle assignee updates ---
             if main_task.assignee_ids is not None:
                 current_task = self.crud.select(self.table_name, filters={TASK_ID_FIELD: main_task_id})
                 if current_task:
                     current_assignees = set(current_task[0].get(ASSIGNEE_IDS_FIELD, []))
                     new_assignees = set(main_task.assignee_ids)
                     is_removal = new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees)
+
                     if is_removal:
                         if self.can_remove_assignees(user_role, user_teams):
                             if len(main_task.assignee_ids) == 0:
                                 raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
                             main_task_dict[ASSIGNEE_IDS_FIELD] = main_task.assignee_ids
-                        # else: staff removal → skip (don’t set assignee_ids at all)
                     else:
                         if len(main_task.assignee_ids) == 0:
                             raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
                         main_task_dict[ASSIGNEE_IDS_FIELD] = main_task.assignee_ids
 
-                        
             if main_task.is_archived is not None:
                 main_task_dict[IS_ARCHIVED_FIELD] = main_task.is_archived
 
-            # ✅ recurrence for main task
+            # ✅ Recurrence fields
             if main_task.recurrence_rule is not None:
                 main_task_dict["recurrence_rule"] = main_task.recurrence_rule.value
             if main_task.recurrence_interval is not None:
@@ -124,7 +117,6 @@ class TaskUpdater:
                 main_task_dict["recurrence_end_date"] = main_task.recurrence_end_date.isoformat()
 
             if main_task_dict:
-                # Add parent_id alongside other fields
                 main_task_dict_with_parent = {**main_task_dict, PARENT_ID_FIELD: MAIN_TASK_PARENT_ID}
                 results = self.crud.update(
                     self.table_name,
@@ -132,15 +124,65 @@ class TaskUpdater:
                     {TASK_ID_FIELD: main_task_id}
                 )
                 if results:
-                    if isinstance(results, list):
-                        result[MAIN_TASK_RESPONSE_KEY] = results[0]
-                    elif isinstance(results, dict):
-                        result[MAIN_TASK_RESPONSE_KEY] = results
+                    result[MAIN_TASK_RESPONSE_KEY] = results[0] if isinstance(results, list) else results
             else:
-                # No meaningful fields provided → skip update
                 result[MAIN_TASK_RESPONSE_KEY] = None
-                
-     # --- SUBTASKS UPDATE ---
+
+            if (
+                main_task.recurrence_rule is not None
+                or main_task.recurrence_interval is not None
+                or main_task.recurrence_end_date is not None
+            ):
+                creator = TaskCreator()
+                try:
+                    self.crud.delete(
+                        self.table_name,
+                        filters={
+                            PARENT_ID_FIELD: main_task_id,
+                        }
+                    )
+                except Exception as e:
+                    print(f"[TaskUpdater] Warning: Failed to delete old recurrence instances: {e}")
+
+                current_task_data = self.crud.select(self.table_name, filters={TASK_ID_FIELD: main_task_id})
+                if current_task_data:
+                    current_task = current_task_data[0]
+                    try:
+                        recurrence_dates = creator._generate_recurrence_dates(
+                            start_date=datetime.fromisoformat(current_task["due_date"]),
+                            rule=current_task.get("recurrence_rule"),
+                            interval=current_task.get("recurrence_interval", 1),
+                            end_date=datetime.fromisoformat(current_task["recurrence_end_date"])
+                            if current_task.get("recurrence_end_date")
+                            else None
+                        )
+
+                        for due_date in recurrence_dates[1:]:
+                            instance_dict = {
+                                TITLE_FIELD: current_task[TITLE_FIELD],
+                                DESCRIPTION_FIELD: current_task[DESCRIPTION_FIELD],
+                                DUE_DATE_FIELD: due_date.isoformat(),
+                                STATUS_FIELD: current_task[STATUS_FIELD],
+                                PRIORITY_FIELD: current_task[PRIORITY_FIELD],
+                                OWNER_USER_ID_FIELD: current_task[OWNER_USER_ID_FIELD],
+                                ASSIGNEE_IDS_FIELD: current_task.get(ASSIGNEE_IDS_FIELD, []),
+                                PARENT_ID_FIELD: main_task_id,
+                                IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED,
+                                "recurrence_rule": current_task.get("recurrence_rule"),
+                                "recurrence_interval": current_task.get("recurrence_interval"),
+                                "recurrence_end_date": current_task.get("recurrence_end_date"),
+                            }
+
+                            if current_task.get("project_id"):
+                                instance_dict["project_id"] = current_task["project_id"]
+
+                            self.crud.insert(self.table_name, instance_dict)
+
+                        print(f"[TaskUpdater] Regenerated {len(recurrence_dates) - 1} recurrence instances for task {main_task_id}")
+                    except Exception as e:
+                        print(f"[TaskUpdater] Error regenerating recurrence instances: {e}")
+
+        # --- ✅ SUBTASKS UPDATE ---
         if subtasks:
             for subtask_id, subtask_data in subtasks.items():
                 subtask_dict = {}
@@ -164,11 +206,13 @@ class TaskUpdater:
                         is_removal = new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees)
 
                         if is_removal:
+                            # Managers/directors can remove
                             if self.can_remove_assignees(user_role, user_teams):
                                 if len(subtask_data.assignee_ids) == 0:
                                     raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
                                 subtask_dict[ASSIGNEE_IDS_FIELD] = subtask_data.assignee_ids
-                            # else: staff removal → skip (don’t set assignee_ids at all)
+                            else:
+                                continue
                         else:
                             if len(subtask_data.assignee_ids) == 0:
                                 raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
@@ -176,8 +220,6 @@ class TaskUpdater:
 
                 if subtask_data.is_archived is not None:
                     subtask_dict[IS_ARCHIVED_FIELD] = subtask_data.is_archived
-
-                # ✅ recurrence for subtasks (if allowed)
                 if subtask_data.recurrence_rule is not None:
                     subtask_dict["recurrence_rule"] = subtask_data.recurrence_rule.value
                 if subtask_data.recurrence_interval is not None:
@@ -185,17 +227,16 @@ class TaskUpdater:
                 if subtask_data.recurrence_end_date is not None:
                     subtask_dict["recurrence_end_date"] = subtask_data.recurrence_end_date.isoformat()
 
-                if subtask_dict:
-                    results = self.crud.update(
-                        self.table_name,
-                        subtask_dict,
-                        {TASK_ID_FIELD: subtask_id, PARENT_ID_FIELD: main_task_id}
-                    )
-                    if results:
-                        if isinstance(results, list):
-                            result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results[0])
-                        elif isinstance(results, dict):
-                            result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results)
+                if not subtask_dict:
+                    continue
+
+                results = self.crud.update(
+                    self.table_name,
+                    subtask_dict,
+                    {TASK_ID_FIELD: subtask_id, PARENT_ID_FIELD: main_task_id}
+                )
+                if results:
+                    result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results[0] if isinstance(results, list) else results)
 
         if new_subtasks:
             for new_subtask in new_subtasks:
@@ -210,7 +251,6 @@ class TaskUpdater:
                     OWNER_USER_ID_FIELD: user_id,
                     IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED
                 }
-
                 results = self.crud.insert(self.table_name, subtask_dict)
                 if results:
                     result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results)
