@@ -149,6 +149,19 @@ function validateTask(task: NewTask, assignees: string[], currentUserId: string 
     }
   }
 
+  // 🔹 Recurrence validation
+  if (task.recurrence_rule) {
+    if (!task.recurrence_end_date) {
+      return "Recurrence end date is required for recurring tasks";
+    }
+
+    const dueDate = new Date(task.due_date);
+    const endDate = new Date(task.recurrence_end_date);
+
+    if (endDate < dueDate) {
+      return "Recurrence end date cannot be before the due date";
+    }
+  }
 
   if (assignees.length === 0 && !currentUserId) {
     return "At least one assignee is required";
