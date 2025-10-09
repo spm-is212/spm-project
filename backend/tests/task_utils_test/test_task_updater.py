@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from backend.utils.task_crud.update import TaskUpdater
 from backend.schemas.task import TaskUpdate
 
@@ -289,3 +289,65 @@ class TestTaskUpdater:
         # Assert
         call_args = mock_crud.update.call_args[0][1]
         assert call_args["parent_id"] is None
+    def test_auto_regenerate_recurrence_instances(self, monkeypatch, mock_crud):
+        """Test that recurrence changes trigger regeneration of instances"""
+        main_task_id = "main-task-id"
+        current_task = {
+            "id": main_task_id,
+            "title": "Recurring Task",
+            "description": "Example recurrence",
+            "due_date": "2025-10-06T00:00:00",
+            "status": "TODO",
+            "priority": 1,
+            "owner_user_id": "user-1",
+            "assignee_ids": ["user-1"],
+            "recurrence_rule": "DAILY",
+            "recurrence_interval": 1,
+            "recurrence_end_date": "2025-10-09T00:00:00",
+            "project_id": "proj-1"
+        }
+
+        mock_crud.select.return_value = [current_task]
+        mock_crud.delete.return_value = None
+
+        inserted_records = []
+
+        def mock_insert(table_name, record):
+            inserted_records.append(record)
+            return [record]
+
+        mock_crud.insert.side_effect = mock_insert
+
+        updater = TaskUpdater()
+        updater.crud = mock_crud
+
+        # Monkeypatch recurrence generation
+        monkeypatch.setattr(
+            "backend.utils.task_crud.create.TaskCreator._generate_recurrence_dates",
+            lambda self, **kwargs: [
+                datetime(2025, 10, 6),
+                datetime(2025, 10, 7),
+                datetime(2025, 10, 8),
+                datetime(2025, 10, 9),
+            ]
+        )
+
+        update_data = type("MockTaskUpdate", (), {
+            "recurrence_rule": type("R", (), {"value": "DAILY"}),
+            "recurrence_interval": 1,
+            "recurrence_end_date": datetime(2025, 10, 9),
+            "title": None,
+            "description": None,
+            "due_date": None,
+            "status": None,
+            "priority": None,
+            "assignee_ids": None,
+            "is_archived": None
+        })()
+
+        updater.update_tasks(main_task_id, "user-1", "manager", ["team1"], main_task=update_data)
+
+        # Assert — should have inserted new recurrence instances
+        assert mock_crud.delete.called
+        assert len(inserted_records) == 3  # because we skip the first (original) date
+        assert all(r["parent_id"] == main_task_id for r in inserted_records)
