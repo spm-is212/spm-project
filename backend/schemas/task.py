@@ -28,6 +28,7 @@ class TaskCreate(BaseModel):
     priority: int
     assignee_ids: List[str]
     parent_id: Optional[str] = Field(default=MAIN_TASK_PARENT_ID)
+    file_url: Optional[str] = Field(None, description="Public URL of the task file stored in Supabase")
 
     # recurrence fields
     recurrence_rule: Optional[RecurrenceRule] = None
@@ -47,7 +48,7 @@ class TaskCreate(BaseModel):
         if not v.strip():
             raise ValueError("Description cannot be empty")
         return v
-    
+
     @field_validator("priority")
     @classmethod
     def priority_between_1_and_10(cls, v: int) -> int:
@@ -83,6 +84,13 @@ class TaskCreate(BaseModel):
             raise ValueError("Recurrence end date cannot be before the due date")
         return v
 
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
+        return v
+
 
 class SubtaskCreate(BaseModel):
     title: str
@@ -93,6 +101,7 @@ class SubtaskCreate(BaseModel):
     priority: int
     assignee_ids: Optional[List[str]] = None
     parent_id: Optional[str] = None
+    file_url: Optional[str] = Field(None, description="Public URL of the subtask file stored in Supabase")
     recurrence_rule: Optional[RecurrenceRule] = None
     recurrence_interval: Optional[int] = 1
     recurrence_end_date: Optional[date] = None
@@ -117,7 +126,7 @@ class SubtaskCreate(BaseModel):
         if v is not None and len(v) > 5:
             raise ValueError("Maximum of 5 assignees allowed per subtask")
         return v
-    
+
     @field_validator("priority")
     @classmethod
     def priority_between_1_and_10(cls, v: int) -> int:
@@ -132,6 +141,13 @@ class SubtaskCreate(BaseModel):
             raise ValueError("Due date cannot be in the past")
         return v
 
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
+        return v
+
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -142,6 +158,7 @@ class TaskUpdate(BaseModel):
     priority: Optional[int] = None
     assignee_ids: Optional[List[str]] = None
     is_archived: Optional[bool] = None
+    file_url: Optional[str] = None
 
     # recurrence fields
     recurrence_rule: Optional[RecurrenceRule] = None
@@ -168,7 +185,7 @@ class TaskUpdate(BaseModel):
         if v is not None and len(v) > 5:
             raise ValueError("Maximum of 5 assignees allowed per task")
         return v
-    
+
     @field_validator("priority")
     @classmethod
     def priority_between_1_and_10(cls, v: int) -> int:
@@ -197,6 +214,13 @@ class TaskUpdate(BaseModel):
             raise ValueError("Recurrence end date cannot be before the due date")
         return v
 
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
+        return v
+
 
 class SubtaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -206,6 +230,7 @@ class SubtaskUpdate(BaseModel):
     priority: Optional[int] = None
     assignee_ids: Optional[List[str]] = None
     is_archived: Optional[bool] = None
+    file_url: Optional[str] = None
 
     @field_validator("title")
     @classmethod
@@ -220,7 +245,7 @@ class SubtaskUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("Description cannot be empty")
         return v
-    
+
     @field_validator("priority")
     @classmethod
     def priority_between_1_and_10(cls, v: int) -> int:
@@ -242,6 +267,13 @@ class SubtaskUpdate(BaseModel):
     def due_date_not_past(cls, v: Optional[date]) -> Optional[date]:
         if v and v < date.today():
             raise ValueError("Due date cannot be in the past")
+        return v
+
+    @field_validator("file_url")
+    @classmethod
+    def file_url_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("File URL cannot be empty")
         return v
 
 

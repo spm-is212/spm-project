@@ -95,7 +95,7 @@ const CalendarView = () => {
       console.log('[TeamView] No user from token!');
     }
   }, []);
-  
+
 
   // Fetch user's teams
   const fetchTeams = useCallback(async () => {
@@ -280,7 +280,7 @@ const CalendarView = () => {
     } else {
       if (selectedProjectId) {
         const personsInProject = teamMembers.filter(member => {
-          return tasks.some(task => 
+          return tasks.some(task =>
             task.project_id?.toString() === selectedProjectId &&
             (task.owner_user_id?.toString() === member.id?.toString() ||
             task.assignee_ids?.map(String).includes(member.id?.toString()))
@@ -451,7 +451,7 @@ const CalendarView = () => {
     </div>
 
       <div>
-    
+
       {/* Month navigation header */}
       <div>
       <div className="flex items-center w-full max-w-xl mx-auto">

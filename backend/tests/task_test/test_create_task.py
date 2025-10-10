@@ -1,5 +1,6 @@
 from backend.tests.task_test.conftest import client
 from backend.utils.task_crud.constants import make_future_due_date
+import json
 
 
 def test_create_main_task_only_success(auth_headers, sample_main_task, patch_crud_for_testing, test_project):
@@ -10,7 +11,7 @@ def test_create_main_task_only_success(auth_headers, sample_main_task, patch_cru
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -37,7 +38,7 @@ def test_create_task_with_subtasks_success(auth_headers, sample_main_task, sampl
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -73,7 +74,7 @@ def test_create_subtask_without_assignees(auth_headers, sample_main_task, patch_
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -93,7 +94,7 @@ def test_create_task_without_auth_fails(sample_main_task):
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload
+        data={"task_data": json.dumps(payload)}
     )
 
     assert response.status_code == 403
@@ -110,7 +111,7 @@ def test_create_task_main_task_parent_id_ignored(auth_headers, sample_main_task,
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
