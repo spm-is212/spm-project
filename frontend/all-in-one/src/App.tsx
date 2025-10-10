@@ -11,7 +11,7 @@ function App() {
       <Routes>
         {/* Login page without sidebar */}
         <Route path="/" element={<LoginPage />} />
-        
+
         {/* Protected routes with sidebar */}
         <Route element={<Layout />}>
           <Route path="/taskmanager" element={<TaskManager />} />

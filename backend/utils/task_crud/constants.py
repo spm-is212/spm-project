@@ -34,6 +34,11 @@ STATUS_FIELD = "status"
 PRIORITY_FIELD = "priority"
 COMMENTS_FIELD = "comments"
 ATTACHMENTS_FIELD = "attachments"
+FILE_URL_FIELD = "file_url"
+
+# File upload constraints
+MAX_FILE_SIZE_MB = 50
+MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 
 # Default values for new tasks/subtasks
 DEFAULT_COMMENTS = []
@@ -50,6 +55,8 @@ SUBTASKS_RESPONSE_KEY = "subtasks"
 # Validation error messages
 TASK_ASSIGNEE_REQUIRED_ERROR = "Task must have at least one assignee"
 SUBTASK_ASSIGNEE_REQUIRED_ERROR = "Subtask must have at least one assignee"
+FILE_TOO_LARGE_ERROR = "File size exceeds maximum of 50MB"
+FILE_UPLOAD_ERROR = "Failed to upload file"
 
 def make_future_due_date():
     return (date.today() + timedelta(days=7)).isoformat()

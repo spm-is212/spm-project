@@ -16,6 +16,7 @@ from backend.utils.task_crud.constants import (
     STATUS_FIELD,
     PRIORITY_FIELD,
     ASSIGNEE_IDS_FIELD,
+    FILE_URL_FIELD,
     TASK_ASSIGNEE_REQUIRED_ERROR,
     SUBTASK_ASSIGNEE_REQUIRED_ERROR,
     MAIN_TASK_RESPONSE_KEY,
@@ -105,6 +106,9 @@ class TaskUpdater:
 
             if main_task.is_archived is not None:
                 main_task_dict[IS_ARCHIVED_FIELD] = main_task.is_archived
+
+            if hasattr(main_task, 'file_url') and main_task.file_url is not None:
+                main_task_dict[FILE_URL_FIELD] = main_task.file_url
 
             # ✅ Recurrence fields
             if main_task.recurrence_rule is not None:
@@ -218,6 +222,8 @@ class TaskUpdater:
 
                 if subtask_data.is_archived is not None:
                     subtask_dict[IS_ARCHIVED_FIELD] = subtask_data.is_archived
+                if hasattr(subtask_data, 'file_url') and subtask_data.file_url is not None:
+                    subtask_dict[FILE_URL_FIELD] = subtask_data.file_url
                 if subtask_data.recurrence_rule is not None:
                     subtask_dict["recurrence_rule"] = subtask_data.recurrence_rule.value
                 if subtask_data.recurrence_interval is not None:
@@ -249,6 +255,8 @@ class TaskUpdater:
                     OWNER_USER_ID_FIELD: user_id,
                     IS_ARCHIVED_FIELD: DEFAULT_IS_ARCHIVED
                 }
+                if hasattr(new_subtask, 'file_url') and new_subtask.file_url:
+                    subtask_dict[FILE_URL_FIELD] = new_subtask.file_url
                 results = self.crud.insert(self.table_name, subtask_dict)
                 if results:
                     result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results)

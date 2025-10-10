@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield } from 'lucide-react';
+import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield, Paperclip, FileText, Trash2 } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import type { Task, NewTask, NewSubtask, User as UserType, TaskPriority } from '../../types/Task';
+
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 interface Project {
   id: string;
@@ -28,7 +31,7 @@ const TaskManager = () => {
     description: '',
     project_id: '',
     status: 'TO_DO',
-    priority: 5,    
+    priority: 5,
     due_date: '',
     comments: '',
     recurrence_rule: '',       // DAILY, WEEKLY, MONTHLY
@@ -42,7 +45,7 @@ const TaskManager = () => {
     description: '',
     project_id: '',
     status: 'TO_DO',
-    priority: 5, 
+    priority: 5,
     due_date: '',
     comments: ''
   });
@@ -51,6 +54,9 @@ const TaskManager = () => {
   const [showAddSubtaskInEdit, setShowAddSubtaskInEdit] = useState<boolean>(false);
   const [editingSubtaskIndex, setEditingSubtaskIndex] = useState<number | null>(null);
   const [editingSubtaskData, setEditingSubtaskData] = useState<NewSubtask | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
+  const [removeFile, setRemoveFile] = useState<boolean>(false);
 
   useEffect(() => {
     const user = getUserFromToken();
@@ -232,7 +238,12 @@ const createTask = async (taskData: NewTask): Promise<void> => {
   setLoading(true);
   setError("");
 
-  // Validate date
+  if (selectedFile && selectedFile.size > MAX_FILE_SIZE_BYTES) {
+    setError(`File size exceeds maximum of ${MAX_FILE_SIZE_MB}MB`);
+    setLoading(false);
+    return;
+  }
+
   if (taskData.due_date) {
     const selectedDate = taskData.due_date;
     const today = new Date().toISOString().split('T')[0];
@@ -243,7 +254,6 @@ const createTask = async (taskData: NewTask): Promise<void> => {
     }
   }
 
-  // Validate subtask dates
   for (const subtask of subtasks) {
     if (subtask.due_date) {
       const selectedDate = subtask.due_date;
@@ -259,7 +269,6 @@ const createTask = async (taskData: NewTask): Promise<void> => {
   try {
     const userId = getUserIdFromToken();
 
-    // Prepare subtasks for backend format
     const formattedSubtasks = subtasks.map(subtask => ({
       title: subtask.title,
       description: subtask.description,
@@ -286,18 +295,33 @@ const createTask = async (taskData: NewTask): Promise<void> => {
       subtasks: formattedSubtasks
     };
 
-    await apiFetch("tasks/createTask", {
+    const formData = new FormData();
+    formData.append('task_data', JSON.stringify(payload));
+    if (selectedFile) {
+      formData.append('file', selectedFile);
+    }
+
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/createTask`, {
       method: "POST",
-      body: JSON.stringify(payload),
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to create task');
+    }
 
     await fetchTasks();
     setShowAddForm(false);
     setNewTask({ title: "", description: "", project_id: "", status: "TO_DO", priority: 5, due_date: "", comments: "" });
     setSubtasks([]);
     setShowSubtaskForm(false);
+    setSelectedFile(null);
 
-    // Reset assignees to current user only
     const currentUser = getUserIdFromToken();
     setSelectedAssignees(currentUser ? [currentUser] : []);
   } catch (err: unknown) {
@@ -311,13 +335,18 @@ const createTask = async (taskData: NewTask): Promise<void> => {
 const updateTask = async (taskId: string, taskData: Partial<Task>): Promise<void> => {
   setLoading(true);
   setError("");
+
+  if (editingFile && editingFile.size > MAX_FILE_SIZE_BYTES) {
+    setError(`File size exceeds maximum of ${MAX_FILE_SIZE_MB}MB`);
+    setLoading(false);
+    return;
+  }
+
   try {
     const userId = getUserIdFromToken();
 
-    // Use editingAssignees for updates, fallback to current user if none selected
     const assigneeIds = editingAssignees.length > 0 ? editingAssignees : (userId ? [userId] : []);
 
-    // Format new subtasks for backend
     const formattedNewSubtasks = editingNewSubtasks.map(subtask => ({
       title: subtask.title,
       description: subtask.description,
@@ -345,15 +374,33 @@ const updateTask = async (taskId: string, taskData: Partial<Task>): Promise<void
       ...(formattedNewSubtasks.length > 0 && { new_subtasks: formattedNewSubtasks })
     };
 
-    await apiFetch("tasks/updateTask", {
+    const formData = new FormData();
+    formData.append('task_data', JSON.stringify(payload));
+    if (editingFile) {
+      formData.append('file', editingFile);
+    }
+    formData.append('remove_file', removeFile.toString());
+
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to update task');
+    }
 
     await fetchTasks();
     setEditingTask(null);
     setEditingNewSubtasks([]);
     setShowAddSubtaskInEdit(false);
+    setEditingFile(null);
+    setRemoveFile(false);
   } catch (err: unknown) {
     setError(`Failed to update task: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
@@ -911,6 +958,48 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Attachment (Max {MAX_FILE_SIZE_MB}MB)</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  id="task-file-input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > MAX_FILE_SIZE_BYTES) {
+                        setError(`File size exceeds maximum of ${MAX_FILE_SIZE_MB}MB`);
+                        e.target.value = '';
+                        return;
+                      }
+                      setSelectedFile(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="task-file-input"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Paperclip className="w-4 h-4 mr-2" />
+                  Choose File
+                </label>
+                {selectedFile && (
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-gray-600">{selectedFile.name}</span>
+                    <button
+                      onClick={() => setSelectedFile(null)}
+                      className="text-red-600 hover:text-red-800"
+                      type="button"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Subtasks Section */}
             <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-3">
@@ -1113,6 +1202,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                   setShowAddForm(false);
                   setSubtasks([]);
                   setShowSubtaskForm(false);
+                  setSelectedFile(null);
                 }}
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center"
               >
@@ -1215,7 +1305,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       className="p-1 border border-gray-300 rounded text-xs"
                     />
                   </>
-                )} 
+                )}
                 <div className="relative">
                   <div className="w-full min-h-[32px] p-1 border border-gray-300 rounded text-xs bg-white">
                     {/* Selected Users */}
@@ -1277,6 +1367,74 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                     </select>
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Attachment (Max {MAX_FILE_SIZE_MB}MB)</label>
+                  {editingTask.file_url && !removeFile && !editingFile && (
+                    <div className="flex items-center space-x-2 mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <a
+                        href={editingTask.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline flex-1"
+                      >
+                        View Current File
+                      </a>
+                      <button
+                        onClick={() => setRemoveFile(true)}
+                        className="text-red-600 hover:text-red-800"
+                        type="button"
+                        title="Remove file"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  {removeFile && (
+                    <div className="text-xs text-red-600 mb-2">File will be removed on save</div>
+                  )}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="file"
+                      id="edit-task-file-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > MAX_FILE_SIZE_BYTES) {
+                            setError(`File size exceeds maximum of ${MAX_FILE_SIZE_MB}MB`);
+                            e.target.value = '';
+                            return;
+                          }
+                          setEditingFile(file);
+                          setRemoveFile(false);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="edit-task-file-input"
+                      className="cursor-pointer inline-flex items-center px-2 py-1 border border-gray-300 rounded shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                      <Paperclip className="w-3 h-3 mr-1" />
+                      {editingTask.file_url ? 'Replace File' : 'Add File'}
+                    </label>
+                    {editingFile && (
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-3 h-3 text-green-600" />
+                        <span className="text-xs text-gray-600">{editingFile.name}</span>
+                        <button
+                          onClick={() => setEditingFile(null)}
+                          className="text-red-600 hover:text-red-800"
+                          type="button"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex space-x-2">
                   <button
                     type="button"
@@ -1293,6 +1451,8 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       setEditingTask(null);
                       setEditingNewSubtasks([]);
                       setShowAddSubtaskInEdit(false);
+                      setEditingFile(null);
+                      setRemoveFile(false);
                     }}
                     className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center"
                   >
@@ -1499,6 +1659,8 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       onClick={() => {
                         setEditingTask(task);
                         setEditingAssignees(task.assignee_ids || []);
+                        setEditingFile(null);
+                        setRemoveFile(false);
                       }}
                       className="text-blue-600 hover:text-blue-800 p-1"
                       title="Edit task"
@@ -1568,6 +1730,21 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                           );
                         })}
                       </div>
+                    </div>
+                  )}
+
+                  {task.file_url && (
+                    <div className="flex items-center text-sm">
+                      <Paperclip className="w-4 h-4 mr-1 text-gray-600" />
+                      <a
+                        href={task.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center"
+                      >
+                        <FileText className="w-4 h-4 mr-1" />
+                        View Attachment
+                      </a>
                     </div>
                   )}
 
@@ -1703,6 +1880,8 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       setEditingTask(null);
                       setEditingNewSubtasks([]);
                       setShowAddSubtaskInEdit(false);
+                      setEditingFile(null);
+                      setRemoveFile(false);
                     }}
                                     className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center"
                                   >

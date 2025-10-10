@@ -1,19 +1,51 @@
 from typing import Optional
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends
+import json
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from pydantic import ValidationError
 from backend.utils.security import get_current_user
 from backend.utils.task_crud.create import TaskCreator
 from backend.utils.task_crud.read import TaskReader
 from backend.utils.task_crud.update import TaskUpdater
 from backend.schemas.task import TaskCreateRequest, TaskUpdateRequest
+from backend.wrappers.storage import SupabaseStorage
+from backend.utils.task_crud.constants import MAX_FILE_SIZE_BYTES, FILE_TOO_LARGE_ERROR, FILE_UPLOAD_ERROR
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 
 @router.post("/createTask")
-def create_task_endpoint(request: TaskCreateRequest, user: dict = Depends(get_current_user)):
+async def create_task_endpoint(
+    task_data: str = Form(...),
+    file: Optional[UploadFile] = File(None),
+    user: dict = Depends(get_current_user)
+):
     try:
         user_id = user["sub"]
+        request_dict = json.loads(task_data)
+        request = TaskCreateRequest(**request_dict)
+
+        file_url = None
+        if file:
+            file_bytes = await file.read()
+            if len(file_bytes) > MAX_FILE_SIZE_BYTES:
+                raise HTTPException(status_code=400, detail=FILE_TOO_LARGE_ERROR)
+
+            try:
+                storage = SupabaseStorage()
+                file_url = storage.upload_file(
+                    file_name=file.filename,
+                    file_bytes=file_bytes,
+                    content_type=file.content_type,
+                    user_id=user_id
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"{FILE_UPLOAD_ERROR}: {str(e)}")
+            finally:
+                await file.close()
+
+        if file_url:
+            request.main_task.file_url = file_url
 
         task_creator = TaskCreator()
         result = task_creator.create_task_with_subtasks(
@@ -23,16 +55,66 @@ def create_task_endpoint(request: TaskCreateRequest, user: dict = Depends(get_cu
         )
 
         return result
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=[{"msg": str(err["msg"]), "type": err["type"], "loc": err["loc"]} for err in e.errors()])
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.put("/updateTask")
-def update_task_endpoint(request: TaskUpdateRequest, user: dict = Depends(get_current_user)):
+async def update_task_endpoint(
+    task_data: str = Form(...),
+    file: Optional[UploadFile] = File(None),
+    remove_file: bool = Form(False),
+    user: dict = Depends(get_current_user)
+):
     try:
         user_id = user["sub"]
         user_role = user["role"]
         user_teams = user.get("teams", [])
+
+        request_dict = json.loads(task_data)
+        request = TaskUpdateRequest(**request_dict)
+
+        if remove_file and request.main_task:
+            from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
+            crud = SupabaseCRUD()
+            existing_task = crud.select("tasks", filters={"id": request.main_task_id})
+            if existing_task and existing_task[0].get("file_url"):
+                storage = SupabaseStorage()
+                storage.delete_file(existing_task[0]["file_url"])
+            request.main_task.file_url = None
+
+        file_url = None
+        if file:
+            file_bytes = await file.read()
+            if len(file_bytes) > MAX_FILE_SIZE_BYTES:
+                raise HTTPException(status_code=400, detail=FILE_TOO_LARGE_ERROR)
+
+            try:
+                from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
+                crud = SupabaseCRUD()
+                existing_task = crud.select("tasks", filters={"id": request.main_task_id})
+                if existing_task and existing_task[0].get("file_url"):
+                    storage = SupabaseStorage()
+                    storage.delete_file(existing_task[0]["file_url"])
+
+                storage = SupabaseStorage()
+                file_url = storage.upload_file(
+                    file_name=file.filename,
+                    file_bytes=file_bytes,
+                    content_type=file.content_type,
+                    user_id=user_id
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"{FILE_UPLOAD_ERROR}: {str(e)}")
+            finally:
+                await file.close()
+
+        if file_url and request.main_task:
+            request.main_task.file_url = file_url
 
         task_updater = TaskUpdater()
         result = task_updater.update_tasks(
@@ -46,6 +128,10 @@ def update_task_endpoint(request: TaskUpdateRequest, user: dict = Depends(get_cu
         )
 
         return result
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=[{"msg": str(err["msg"]), "type": err["type"], "loc": err["loc"]} for err in e.errors()])
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
