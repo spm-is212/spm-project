@@ -3,6 +3,7 @@ import LoginPage from './components/signuppage/login'
 import TaskManager from './components/TaskManagement/TaskManager'
 import TeamView from './components/TaskManagement/TeamView.tsx';
 import Layout from './components/nav/Layout.tsx';
+import CalendarView from './components/DeadlineSchedule/calendarView.tsx';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/taskmanager" element={<TaskManager />} />
           <Route path="/team" element={<TeamView />} />
+          <Route path="/calendarview" element={<CalendarView />} />
         </Route>
       </Routes>
     </div>
