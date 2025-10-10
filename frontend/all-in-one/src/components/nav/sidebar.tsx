@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { CheckSquare, Users, Menu, X, LogOut, CheckCircle } from 'lucide-react';
+import { CheckSquare, Users, Menu, X, LogOut, CheckCircle, Calendar } from 'lucide-react';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
@@ -27,6 +27,7 @@ export default function Sidebar() {
   const navigation = [
     { name: 'Task Manager', href: '/taskmanager', icon: CheckSquare },
     { name: 'Projects', href: '/team', icon: Users },
+    { name: 'Calendar View', href: '/calendarview', icon: Calendar },
   ];
 
   const handleLogout = async () => {
