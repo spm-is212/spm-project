@@ -423,10 +423,23 @@ const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> =
       subtasks: {}
     };
 
-    await apiFetch("tasks/updateTask", {
+    const formData = new FormData();
+    formData.append('task_data', JSON.stringify(payload));
+    formData.append('remove_file', 'false');
+
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to archive/unarchive task');
+    }
 
     await fetchTasks(); // Refresh the task list
   } catch (err: unknown) {
@@ -478,10 +491,23 @@ const updateSubtask = async (mainTaskId: string, subtaskId: string, subtaskData:
       }
     };
 
-    await apiFetch("tasks/updateTask", {
+    const formData = new FormData();
+    formData.append('task_data', JSON.stringify(payload));
+    formData.append('remove_file', 'false');
+
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to update subtask');
+    }
 
     await fetchTasks();
     setEditingTask(null);
@@ -508,10 +534,23 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       }
     };
 
-    await apiFetch("tasks/updateTask", {
+    const formData = new FormData();
+    formData.append('task_data', JSON.stringify(payload));
+    formData.append('remove_file', 'false');
+
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to archive/unarchive subtask');
+    }
 
     await fetchTasks(); // Refresh the task list
   } catch (err: unknown) {
