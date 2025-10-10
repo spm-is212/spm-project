@@ -22,6 +22,7 @@ const TaskManager = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<'priority' | 'date'>('priority');
   const [newTask, setNewTask] = useState<NewTask>({
     title: '',
     description: '',
@@ -98,19 +99,39 @@ const fetchTasks = useCallback(async () => {
         return acc;
       }, {});
 
-    // Attach subtasks to their main tasks
-    const organizedTasks = mainTasks.map(mainTask => ({
-      ...mainTask,
-      subtasks: subtasksByParent[mainTask.id] || []
-    }));
+  const organizedTasks = mainTasks.map(mainTask => ({
+    ...mainTask,
+    subtasks: sortMode === 'priority'
+    ? sortByPriority(subtasksByParent[mainTask.id] || [])
+    : sortByDueDate(subtasksByParent[mainTask.id] || [])
+  }));
 
-    setTasks(organizedTasks);
+  const sortedTasks =
+  sortMode === 'priority'
+    ? sortByPriority(organizedTasks)
+    : sortByDueDate(organizedTasks);
+
+  setTasks(sortedTasks);
+
   } catch (err: unknown) {
     setError(`Failed to fetch tasks: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setLoading(false);
   }
-}, []);
+}, [sortMode]);
+
+function sortByPriority(tasks: Task[]): Task[] {
+  // Sort descending: higher number = higher priority
+  return [...tasks].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+}
+
+function sortByDueDate(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+  });
+}
 
 function getUserIdFromToken(): string | null {
   const token = localStorage.getItem("access_token");
@@ -656,6 +677,18 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
           <h1 className="text-3xl font-bold text-gray-900">Smart Task Manager</h1>
         </div>
         <p className="text-gray-600">Manage your tasks efficiently with full CRUD operations</p>
+        <div className="flex space-x-2">
+  <label className="text-sm text-gray-600">Sort by:</label>
+  <select
+    value={sortMode}
+    onChange={(e) => setSortMode(e.target.value as 'priority' | 'date')}
+    className="border rounded px-2 py-1 text-sm"
+  >
+    <option value="priority">Priority</option>
+    <option value="date">Due Date</option>
+  </select>
+</div>
+
 
         {userInfo && (
           <div className="mb-6 p-4 bg-gray-50 border rounded-lg flex items-center space-x-4 shadow-sm">
