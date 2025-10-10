@@ -70,13 +70,13 @@ const CalendarView = () => {
   const handleNextMonth = () => setCurrentMonth((prev) => addMonths(prev, 1));
 
   const tasksByDate: Record<string, TaskWithProject[]> = {};
-    tasks.forEach(task => {
+    (filteredTasks || []).forEach(task => {
     if (task.due_date) {
-        const dateKey = format(new Date(task.due_date), "yyyy-MM-dd");
-        if (!tasksByDate[dateKey]) tasksByDate[dateKey] = [];
-        tasksByDate[dateKey].push(task);
+      const dateKey = format(new Date(task.due_date), "yyyy-MM-dd");
+      if (!tasksByDate[dateKey]) tasksByDate[dateKey] = [];
+      tasksByDate[dateKey].push(task);
     }
-    });
+  });
 
   useEffect(() => {
     const user = getUserFromToken();
@@ -273,50 +273,46 @@ const CalendarView = () => {
   const userProjects = getUserCollaboratorProjects();
 
   useEffect(() => {
-    if (userInfo?.role?.toLowerCase() !== 'staff') {
-      // Staff users don't see persons dropdown
+    if (userInfo?.role?.toLowerCase() === 'staff') {
+    // Staff users don't see persons dropdown
       setFilteredPersons([]);
       setSelectedPersonId(null);
     } else {
       if (selectedProjectId) {
-        // Filter teamMembers who are in the selected project
         const personsInProject = teamMembers.filter(member => {
-          // Check if member is linked to the project (e.g via assigned tasks or project collaborator)
-          // Assuming tasks includes projectid + assigneeids or owneruserid to relate persons to projects
           return tasks.some(task => 
-            task.parent_id === selectedProjectId && 
-            (task.owner_user_id === member.id || task.assignee_ids?.includes(member.id))
+            task.project_id?.toString() === selectedProjectId &&
+            (task.owner_user_id?.toString() === member.id?.toString() ||
+            task.assignee_ids?.map(String).includes(member.id?.toString()))
           );
         });
         setFilteredPersons(personsInProject);
-        // Reset selected person if not in filtered list anymore
+
         if (selectedPersonId && !personsInProject.find(p => p.id === selectedPersonId)) {
           setSelectedPersonId(null);
         }
       } else {
-        // No project selected, show all members under user's management/director role
-        // Assuming teamMembers already filtered to user's team/direct reports
         setFilteredPersons(teamMembers);
       }
     }
   }, [selectedProjectId, userInfo?.role, tasks, teamMembers, selectedPersonId]);
 
   useEffect(() => {
-    let filtered = tasks;
+    if (loading) return; // wait until tasks are loaded
 
+    let filtered = [...tasks];
     if (selectedProjectId) {
-      filtered = filtered.filter(t => t.parent_id === selectedProjectId);
+      filtered = filtered.filter(t => t.project_id === selectedProjectId);
     }
-
     if (selectedPersonId) {
-      filtered = filtered.filter(t => 
-        t.owner_user_id === selectedPersonId || 
+      filtered = filtered.filter(t =>
+        t.owner_user_id === selectedPersonId ||
         t.assignee_ids?.includes(selectedPersonId)
       );
     }
-
     setFilteredTasks(filtered);
-  }, [selectedProjectId, selectedPersonId, tasks]);
+  }, [selectedProjectId, selectedPersonId, tasks, loading]);
+
 
   const resetFilters = () => {
     setSelectedProjectId(null);
@@ -576,7 +572,7 @@ const CalendarView = () => {
           <p className="text-gray-500 mb-3">{selectedTask.description}</p>
           <div className="flex gap-2 mb-2">
             <span className={`px-3 py-1 rounded-xl text-xs font-medium ${
-              selectedTask.status === 'IN PROGRESS' ? 'bg-blue-100 text-blue-800' : ''
+              selectedTask.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : ''
             } ${selectedTask.status === "COMPLETED" ? 'bg-green-100 text-green-700' : ''} ${selectedTask.status === 'TO DO' ? 'bg-gray-100 text-gray-700' : ''}`}>
               {selectedTask.status}
             </span>
