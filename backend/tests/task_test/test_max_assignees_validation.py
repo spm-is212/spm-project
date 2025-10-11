@@ -1,5 +1,6 @@
 from backend.tests.task_test.conftest import client
 from backend.utils.task_crud.constants import make_future_due_date
+import json
 
 
 def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_testing, test_project):
@@ -23,7 +24,7 @@ def test_create_task_with_max_5_assignees_success(auth_headers, patch_crud_for_t
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -52,7 +53,7 @@ def test_create_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -95,7 +96,7 @@ def test_create_subtask_with_6_assignees_fails(auth_headers, patch_crud_for_test
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -122,7 +123,7 @@ def test_update_task_with_6_assignees_fails(auth_headers, patch_crud_for_testing
 
     response = client.put(
         "/api/tasks/updateTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 

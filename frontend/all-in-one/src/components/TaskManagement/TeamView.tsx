@@ -578,9 +578,9 @@ const TeamView = () => {
               const completedTasks = projectTasks.filter(t => t.status === 'COMPLETED').length;
 
               return (
-                
+
                 <div key={project.id} className="bg-white rounded-lg shadow-sm border">
-                  
+
                   <div
                     className="p-4 bg-gradient-to-r from-green-50 to-green-100 border-b cursor-pointer hover:from-green-100 hover:to-green-150 transition-colors"
                     onClick={() => toggleProjectExpansion(project.id)}

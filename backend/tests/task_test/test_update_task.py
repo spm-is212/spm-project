@@ -1,5 +1,6 @@
 from backend.tests.task_test.conftest import client
 from backend.utils.task_crud.constants import make_future_due_date
+import json
 
 
 def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_project):
@@ -18,7 +19,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_pro
 
     create_response = client.post(
         "/api/tasks/createTask",
-        json=create_payload,
+        data={"task_data": json.dumps(create_payload)},
         headers=auth_headers
     )
 
@@ -40,7 +41,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_pro
 
     response = client.put(
         "/api/tasks/updateTask",
-        json=update_payload,
+        data={"task_data": json.dumps(update_payload)},
         headers=auth_headers
     )
 
@@ -71,7 +72,7 @@ def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing, 
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=auth_headers
     )
 
@@ -88,7 +89,7 @@ def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing, 
 
     response = client.put(
         "/api/tasks/updateTask",
-        json=update_payload,
+        data={"task_data": json.dumps(update_payload)},
         headers=auth_headers
     )
 
@@ -114,7 +115,7 @@ def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_
 
     response = client.post(
         "/api/tasks/createTask",
-        json=payload,
+        data={"task_data": json.dumps(payload)},
         headers=staff_auth_headers
     )
 
@@ -131,7 +132,7 @@ def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_
 
     response = client.put(
         "/api/tasks/updateTask",
-        json=update_payload,
+        data={"task_data": json.dumps(update_payload)},
         headers=staff_auth_headers
     )
 
@@ -151,7 +152,7 @@ def test_update_task_without_auth_fails():
 
     response = client.put(
         "/api/tasks/updateTask",
-        json=update_payload
+        data={"task_data": json.dumps(update_payload)}
     )
 
     assert response.status_code == 403
@@ -168,7 +169,7 @@ def test_update_nonexistent_task_fails(auth_headers, patch_crud_for_testing):
 
     response = client.put(
         "/api/tasks/updateTask",
-        json=update_payload,
+        data={"task_data": json.dumps(update_payload)},
         headers=auth_headers
     )
 

@@ -16,6 +16,7 @@ from backend.utils.task_crud.constants import (
     COMMENTS_FIELD,
     ATTACHMENTS_FIELD,
     IS_ARCHIVED_FIELD,
+    FILE_URL_FIELD,
     MAIN_TASK_KEY,
     SUBTASKS_RESPONSE_KEY,
     TASK_ID_FIELD,
@@ -81,6 +82,9 @@ class TaskCreator:
         if main_task.project_id is not None:
             main_task_dict["project_id"] = main_task.project_id
 
+        if hasattr(main_task, 'file_url') and main_task.file_url:
+            main_task_dict[FILE_URL_FIELD] = main_task.file_url
+
         created_main_task = self.crud.insert(self.table_name, main_task_dict)
         result = {MAIN_TASK_KEY: created_main_task, SUBTASKS_RESPONSE_KEY: []}
 
@@ -123,6 +127,9 @@ class TaskCreator:
 
                 if subtask_data.project_id is not None:
                     subtask_dict["project_id"] = subtask_data.project_id
+
+                if hasattr(subtask_data, 'file_url') and subtask_data.file_url:
+                    subtask_dict[FILE_URL_FIELD] = subtask_data.file_url
 
                 created_subtask = self.crud.insert(self.table_name, subtask_dict)
                 result[SUBTASKS_RESPONSE_KEY].append(created_subtask)

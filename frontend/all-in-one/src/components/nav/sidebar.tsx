@@ -96,7 +96,7 @@ export default function Sidebar() {
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
-              
+
               return (
                 <li key={item.name}>
                   <Link
@@ -122,8 +122,8 @@ export default function Sidebar() {
             onClick={handleLogout}
             disabled={isLoggingOut}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-              ${isLoggingOut 
-                ? 'bg-gray-700 cursor-not-allowed' 
+              ${isLoggingOut
+                ? 'bg-gray-700 cursor-not-allowed'
                 : 'text-red-400 hover:bg-gray-800 hover:text-red-300'
               }`}
           >
