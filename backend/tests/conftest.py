@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 from dotenv import load_dotenv
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 
@@ -68,3 +69,14 @@ def clean_test_database():
         crud.client.table("users_test").delete().neq("uuid", "00000000-0000-0000-0000-000000000000").execute()
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def mock_notification_service():
+    """
+    Automatically mock NotificationService for all tests to prevent real email sending.
+    """
+    with patch("backend.utils.task_crud.create.NotificationService") as MockNotif:
+        mock_instance = MockNotif.return_value
+        mock_instance.notify_task_event.return_value = None
+        yield mock_instance
