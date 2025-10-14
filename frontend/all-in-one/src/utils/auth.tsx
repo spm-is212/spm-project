@@ -32,3 +32,7 @@ export function getUserFromToken() {
     return null;
   }
 }
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+}
