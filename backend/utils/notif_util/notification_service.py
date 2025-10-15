@@ -16,7 +16,10 @@ class NotificationService:
             "message": message,
             "timestamp": datetime.utcnow().isoformat()
         }
-        self.crud.insert("notifications", data)
+        try:
+            self.crud.insert("notifications", data)
+        except Exception as e:
+            print(f"Insert failed: {e}")
         return data
 
     def send_email_notification(self, receiver_email, subject, body):
