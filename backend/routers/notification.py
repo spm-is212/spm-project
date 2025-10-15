@@ -1,5 +1,4 @@
-from typing import List, Optional
-from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from backend.utils.security import get_current_user
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from backend.schemas.user import UserCreate, UserResponse, TokenResponse
+from backend.schemas.user import TokenResponse
 from backend.utils.security import verify_password, create_access_token, get_current_user
 
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
