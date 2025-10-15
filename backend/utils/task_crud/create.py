@@ -162,11 +162,6 @@ class TaskCreator:
                if sub.assignee_ids:
                    receivers.update(sub.assignee_ids)
 
-
-       # prevent self-notify (optional)
-       receivers.discard(user_id)
-
-
        hardcoded_email = "reneefongsh@gmail.com"  # change this to your address
 
 
