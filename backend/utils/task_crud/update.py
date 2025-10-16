@@ -6,7 +6,6 @@ from backend.utils.task_crud.create import TaskCreator
 from backend.utils.task_crud.constants import (
     TASKS_TABLE_NAME,
     ASSIGNEE_REMOVAL_ROLES,
-    PRIVILEGED_TEAMS,
     PARENT_ID_FIELD,
     IS_ARCHIVED_FIELD,
     TASK_ID_FIELD,
@@ -33,17 +32,16 @@ class TaskUpdater:
         self.crud = SupabaseCRUD()
         self.table_name = TASKS_TABLE_NAME
 
-    def can_remove_assignees(self, user_role: str, user_teams: list) -> bool:
+    def can_remove_assignees(self, user_role: str) -> bool:
         """
-        Check if user can remove assignee IDs based on role and teams
+        Check if user can remove assignee IDs based on role.
+
+        After removing the teams abstraction, this is now purely role-based.
 
         Rules:
-        - Role is "manager" or "director"
-        - Teams include "sales manager" or "finance managers"
+        - Role is "admin" or "manager"
         """
-        if user_role in ASSIGNEE_REMOVAL_ROLES:
-            return True
-        return any(team in PRIVILEGED_TEAMS for team in user_teams)
+        return user_role.lower() in ASSIGNEE_REMOVAL_ROLES
 
     def _validate_main_task_archival(self, main_task_id: str, is_archived: bool) -> bool:
         if not is_archived:
@@ -63,7 +61,6 @@ class TaskUpdater:
         main_task_id: str,
         user_id: str,
         user_role: str,
-        user_teams: list,
         main_task: Optional[TaskUpdate] = None,
         subtasks: Optional[Dict[str, TaskUpdate]] = None,
         new_subtasks: Optional[List[SubtaskCreate]] = None,
@@ -95,7 +92,7 @@ class TaskUpdater:
                     is_removal = new_assignees.issubset(current_assignees) and len(new_assignees) < len(current_assignees)
 
                     if is_removal:
-                        if self.can_remove_assignees(user_role, user_teams):
+                        if self.can_remove_assignees(user_role):
                             if len(main_task.assignee_ids) == 0:
                                 raise ValueError(TASK_ASSIGNEE_REQUIRED_ERROR)
                             main_task_dict[ASSIGNEE_IDS_FIELD] = main_task.assignee_ids
@@ -209,7 +206,7 @@ class TaskUpdater:
 
                         if is_removal:
                             # Managers/directors can remove
-                            if self.can_remove_assignees(user_role, user_teams):
+                            if self.can_remove_assignees(user_role):
                                 if len(subtask_data.assignee_ids) == 0:
                                     raise ValueError(SUBTASK_ASSIGNEE_REQUIRED_ERROR)
                                 subtask_dict[ASSIGNEE_IDS_FIELD] = subtask_data.assignee_ids

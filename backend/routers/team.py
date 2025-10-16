@@ -1,40 +1,27 @@
 from fastapi import APIRouter, Depends
 from backend.utils.security import get_current_user
-from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 
-router = APIRouter(prefix="/api/teams", tags=["teams"])
+router = APIRouter(prefix="/api/teams", tags=["teams (deprecated)"])
 
-@router.get("/my-teams")
+@router.get("/my-teams", deprecated=True)
 def get_my_teams(user: dict = Depends(get_current_user)):
-    """Get teams for the current user using user_teams junction table"""
-    try:
-        crud = SupabaseCRUD()
-        user_id = user["sub"]
+    """
+    DEPRECATED: This endpoint is deprecated and will be removed.
 
-        # Method 1: Get teams from user_teams junction table
-        user_teams_result = crud.client.table('user_teams').select('team_id').eq('user_id', user_id).execute()
+    The team abstraction has been removed. Use /api/projects/list instead
+    to get projects where you are a collaborator.
 
-        if not user_teams_result.data:
-            # Fallback: Try getting from user.teams array if exists in JWT
-            user_teams = user.get("teams", [])
-            if user_teams and len(user_teams) > 0:
-                result = crud.client.table('teams').select('*').in_('id', user_teams).execute()
-                return {"teams": result.data or []}
-            return {"teams": []}
+    For backward compatibility, this returns an empty teams array.
+    """
+    # Return empty array for backward compatibility
+    return {"teams": [], "message": "Teams feature deprecated. Use projects instead."}
 
-        # Extract team IDs from junction table
-        team_ids = [ut['team_id'] for ut in user_teams_result.data]
-
-        # Fetch full team data
-        teams_result = crud.client.table('teams').select('*').in_('id', team_ids).execute()
-
-        return {"teams": teams_result.data or []}
-    except Exception as e:
-        # Log error and return empty array
-        print(f"Teams table error: {str(e)}")
-        return {"teams": []}
-
-@router.get("/team-tasks")
+@router.get("/team-tasks", deprecated=True)
 def get_team_tasks(user: dict = Depends(get_current_user)):
-    # TODO: Implement team tasks retrieval
-    return {"tasks": []}
+    """
+    DEPRECATED: This endpoint is deprecated and will be removed.
+
+    Use /api/tasks/read instead to get tasks where you are an assignee,
+    or filter tasks by project_id.
+    """
+    return {"tasks": [], "message": "Teams feature deprecated. Use task endpoints with project filters instead."}

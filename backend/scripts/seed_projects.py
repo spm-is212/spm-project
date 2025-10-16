@@ -5,45 +5,47 @@ from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from datetime import datetime
 
 def seed_projects():
-    """Seed sample projects for teams"""
+    """Seed sample projects with collaborators (no teams)"""
     crud = SupabaseCRUD()
     client = crud.client
 
+    # Note: Get user UUIDs from your database and update these
+    # For now using placeholder UUIDs - update with real user IDs
     sample_projects = [
         {
             "name": "Payment Gateway Integration",
             "description": "Integrate Stripe and PayPal payment systems",
-            "team_id": "team1",
+            "collaborator_ids": [],  # Add actual user UUIDs here
             "created_at": datetime.utcnow().isoformat()
         },
         {
             "name": "User Authentication System",
             "description": "JWT-based authentication with OAuth integration",
-            "team_id": "team1",
+            "collaborator_ids": [],  # Add actual user UUIDs here
             "created_at": datetime.utcnow().isoformat()
         },
         {
             "name": "Dashboard UI Redesign",
             "description": "Modern React dashboard with improved UX",
-            "team_id": "team2",
+            "collaborator_ids": [],  # Add actual user UUIDs here
             "created_at": datetime.utcnow().isoformat()
         },
         {
             "name": "Mobile App MVP",
             "description": "React Native mobile application",
-            "team_id": "team2",
+            "collaborator_ids": [],  # Add actual user UUIDs here
             "created_at": datetime.utcnow().isoformat()
         },
         {
             "name": "CI/CD Pipeline Setup",
             "description": "Automated deployment pipeline with GitHub Actions",
-            "team_id": "team3",
+            "collaborator_ids": [],  # Add actual user UUIDs here
             "created_at": datetime.utcnow().isoformat()
         },
         {
             "name": "Infrastructure Monitoring",
             "description": "Setup monitoring and alerting with Prometheus & Grafana",
-            "team_id": "team3",
+            "collaborator_ids": [],  # Add actual user UUIDs here
             "created_at": datetime.utcnow().isoformat()
         }
     ]
@@ -56,7 +58,8 @@ def seed_projects():
             print(f"✅ Successfully created {len(result.data)} sample projects!")
             print("\nCreated projects:")
             for project in result.data:
-                print(f"  - {project['name']} (Team: {project['team_id']})")
+                collab_count = len(project.get('collaborator_ids', []))
+                print(f"  - {project['name']} ({collab_count} collaborators)")
         else:
             print("⚠️  No projects were created.")
 
@@ -64,7 +67,7 @@ def seed_projects():
         print(f"❌ Error creating projects: {str(e)}")
         print("\nMake sure:")
         print("1. The projects table exists in your database")
-        print("2. The team_id values match actual teams in your database")
+        print("2. Update collaborator_ids with actual user UUIDs from your database")
 
 if __name__ == "__main__":
     print("Seeding sample projects...")

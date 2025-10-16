@@ -6,7 +6,6 @@ class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     collaborator_ids: List[str] = Field(default_factory=list, description="List of user UUIDs who are collaborators")
-    team_id: Optional[str] = Field(None, description="(Optional/Deprecated) Team ID for backward compatibility")
 
 
 class ProjectCreate(ProjectBase):
@@ -24,7 +23,6 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     collaborator_ids: Optional[List[str]] = Field(None, description="List of user UUIDs who are collaborators")
-    team_id: Optional[str] = None
 
     @field_validator("collaborator_ids")
     @classmethod
@@ -39,7 +37,6 @@ class ProjectResponse(BaseModel):
     name: str
     description: Optional[str] = None
     collaborator_ids: List[str] = Field(default_factory=list)
-    team_id: Optional[str] = None
     created_by: Optional[str] = None
     created_at: str
     updated_at: Optional[str] = None
