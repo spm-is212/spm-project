@@ -140,6 +140,7 @@ async def update_task_endpoint(
 def read_tasks_endpoint(user: dict = Depends(get_current_user)):
     """
     Read tasks based on user access control rules.
+
     Access control is based on:
     - Role hierarchy (managing_director > director > manager > staff)
     - Project collaboration (tasks in projects where user is a collaborator)

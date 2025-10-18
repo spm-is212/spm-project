@@ -23,6 +23,7 @@ def create_project(project: ProjectCreate, user: dict = Depends(get_current_user
             "created_by": user_id,
             "created_at": datetime.utcnow().isoformat(),
         }
+
         # Insert into database
         result = crud.client.table("projects").insert(project_data).execute()
 

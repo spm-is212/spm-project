@@ -41,7 +41,7 @@ class TaskReader:
 
         Args:
             user_id: Unique identifier of the requesting user
-            user_role: User's organizational role (staff, manager, director, managing_director)
+            user_role: User's organizational role (admin, manager, staff)
             user_departments: List of departments the user belongs to
 
         Returns:
@@ -112,7 +112,8 @@ class TaskReader:
         Centralized access control logic used by both regular and archived task retrieval.
 
         Access control is now based purely on:
-        - Role hierarchy
+        - Role hierarchy (no more privileged teams check)
+        - Project collaboration
         - Task assignment
 
         Args:
@@ -250,6 +251,8 @@ class TaskReader:
             List of all tasks (including archived) where user is assigned
         """
         return self._filter_tasks_by_assignment(user_id, include_archived=True)
+
+
 
     def _get_department_user_ids(self, departments: List[str]) -> set:
         """
