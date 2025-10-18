@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckSquare, Users, Menu, X, LogOut, CheckCircle, Calendar } from 'lucide-react';
+import NotificationBell from '../Notifications';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
@@ -67,29 +68,38 @@ export default function Sidebar() {
         } bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col`}
       >
         {/* Header */}
-        <div
-          className={`flex items-center ${
-            isOpen ? 'justify-between p-4' : 'justify-center py-6'
-          } border-b border-[#2C2C2E]`}
+<div
+  className={`flex items-center ${
+    isOpen ? 'justify-between p-4' : 'justify-center py-6'
+  } border-b border-[#2C2C2E]`}
+>
+  {isOpen ? (
+    <>
+      <div className="flex items-center gap-2">
+        <img src="/l1.svg" alt="Logo" className="h-8" />
+        <span className="font-semibold text-lg tracking-tight text-gray-100">
+          ALL-IN-ONE
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <NotificationBell />  {/* ← NEW: Notification Bell Component */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 rounded-lg hover:bg-[#2C2C2E] transition-colors"
         >
-          {isOpen && (
-            <div className="flex items-center gap-2">
-              <img src="/l1.svg" alt="Logo" className="h-8" />
-              <span className="font-semibold text-lg tracking-tight text-gray-100">
-                ALL-IN-ONE
-              </span>
-            </div>
-          )}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className={`p-2 rounded-lg hover:bg-[#2C2C2E] transition-colors ${
-              !isOpen ? 'mx-auto' : ''
-            }`}
-          >
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-
+          <X size={20} />
+        </button>
+      </div>
+    </>
+  ) : (
+    <button
+      onClick={() => setIsOpen(!isOpen)}
+      className="p-2 rounded-lg hover:bg-[#2C2C2E] transition-colors mx-auto"
+    >
+      <Menu size={20} />
+    </button>
+  )}
+</div>
         {/* Navigation */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
