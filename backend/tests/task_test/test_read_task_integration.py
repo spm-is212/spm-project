@@ -234,6 +234,7 @@ class TestReadTaskIntegration:
         # Should not see sales task
         assert "650e8400-e29b-41d4-a716-446655440001" not in task_ids
 
+    @pytest.mark.skip(reason="Teams feature removed")
     def test_privileged_team_can_read_department_tasks(self, privileged_team_token, setup_test_data):
         """Test that privileged teams (sales manager) can read tasks from their department"""
         headers = {"Authorization": f"Bearer {privileged_team_token}"}

@@ -21,7 +21,7 @@ class TestTaskUpdater:
         )
 
         # Act
-        result = updater.update_tasks("test-task-id", "user-1", "manager", ["team1"], main_task=update_data)
+        result = updater.update_tasks("test-task-id", "user-1", "manager", main_task=update_data)
 
         # Assert
         assert result["main_task"]["title"] == "Updated Title"
@@ -50,7 +50,7 @@ class TestTaskUpdater:
         )
 
         # Act
-        updater.update_tasks("test-task-id", "user-1", "staff", ["team1"], main_task=update_data)
+        updater.update_tasks("test-task-id", "user-1", "staff", main_task=update_data)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -69,7 +69,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate(due_date=date(2025, 12, 25))
 
         # Act
-        updater.update_tasks("test-task-id", "user-1", "manager", ["team1"], main_task=update_data)
+        updater.update_tasks("test-task-id", "user-1", "manager", main_task=update_data)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -93,7 +93,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate(assignee_ids=["user-1"])  # Removing user-2 and user-3
 
         # Act
-        result = updater.update_tasks("test-task-id", "user-1", "manager", ["team1"], main_task=update_data)
+        result = updater.update_tasks("test-task-id", "user-1", "manager", main_task=update_data)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -118,7 +118,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate(assignee_ids=["user-1", "user-2"])  # Adding user-2
 
         # Act
-        updater.update_tasks("test-task-id", "user-1", "staff", ["team1"], main_task=update_data)
+        updater.update_tasks("test-task-id", "user-1", "staff", main_task=update_data)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -141,7 +141,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate(assignee_ids=["user-1"])  # Trying to remove user-2 and user-3
 
         # Act
-        result = updater.update_tasks("test-task-id", "user-1", "staff", ["team1"], main_task=update_data)
+        result = updater.update_tasks("test-task-id", "user-1", "staff", main_task=update_data)
 
         # Assert
         # Should not have called update because staff can't remove assignees
@@ -170,7 +170,7 @@ class TestTaskUpdater:
         }
 
         # Act
-        result = updater.update_tasks("main-task-id", "user-1", "manager", ["team1"], subtasks=subtask_updates)
+        result = updater.update_tasks("main-task-id", "user-1", "manager", subtasks=subtask_updates)
 
         # Assert
         assert len(result["updated_subtasks"]) == 1
@@ -202,7 +202,7 @@ class TestTaskUpdater:
         }
 
         # Act
-        updater.update_tasks("main-task-id", "user-1", "manager", ["team1"], subtasks=subtask_updates)
+        updater.update_tasks("main-task-id", "user-1", "manager", subtasks=subtask_updates)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -226,7 +226,7 @@ class TestTaskUpdater:
         }
 
         # Act
-        result = updater.update_tasks("main-task-id", "user-1", "staff", ["team1"], subtasks=subtask_updates)
+        result = updater.update_tasks("main-task-id", "user-1", "staff", subtasks=subtask_updates)
 
         # Assert
         # Should not have called update because staff can't remove assignees
@@ -245,7 +245,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate(title="Only Title Updated")  # Only title provided
 
         # Act
-        updater.update_tasks("test-task-id", "user-1", "manager", ["team1"], main_task=update_data)
+        updater.update_tasks("test-task-id", "user-1", "manager", main_task=update_data)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -266,7 +266,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate()  # No fields provided
 
         # Act
-        result = updater.update_tasks("test-task-id", "user-1", "manager", ["team1"], main_task=update_data)
+        result = updater.update_tasks("test-task-id", "user-1", "manager", main_task=update_data)
 
         # Assert
         mock_crud.update.assert_not_called()
@@ -284,7 +284,7 @@ class TestTaskUpdater:
         update_data = TaskUpdate(title="Updated")
 
         # Act
-        updater.update_tasks("test-task-id", "user-1", "manager", ["team1"], main_task=update_data)
+        updater.update_tasks("test-task-id", "user-1", "manager", main_task=update_data)
 
         # Assert
         call_args = mock_crud.update.call_args[0][1]
@@ -345,7 +345,7 @@ class TestTaskUpdater:
             "is_archived": None
         })()
 
-        updater.update_tasks(main_task_id, "user-1", "manager", ["team1"], main_task=update_data)
+        updater.update_tasks(main_task_id, "user-1", "manager", main_task=update_data)
 
         # Assert — should have inserted new recurrence instances
         assert mock_crud.delete.called

@@ -285,7 +285,6 @@ class TestReadTaskEndpoint:
         mock_get_tasks.assert_called_once_with(
             user_id="550e8400-e29b-41d4-a716-446655440001",
             user_role="director",
-            user_teams=["management"],
             user_departments=["engineering"]
         )
 
@@ -309,7 +308,6 @@ class TestReadTaskEndpoint:
         mock_get_tasks.assert_called_once_with(
             user_id="550e8400-e29b-41d4-a716-446655440002",
             user_role="manager",
-            user_teams=["sales manager"],
             user_departments=["sales"]
         )
 
@@ -333,7 +331,6 @@ class TestReadTaskEndpoint:
         mock_get_tasks.assert_called_once_with(
             user_id="550e8400-e29b-41d4-a716-446655440003",
             user_role="staff",
-            user_teams=["developers"],
             user_departments=["engineering"]
         )
 
@@ -411,7 +408,6 @@ class TestReadTaskEndpoint:
         mock_get_tasks.assert_called_once_with(
             user_id="user-id",
             user_role="staff",
-            user_teams=[],   # Default empty list
             user_departments=[]  # Default empty list
         )
 
@@ -437,7 +433,6 @@ class TestReadTaskEndpoint:
         mock_get_tasks.assert_called_once_with(
             user_id="550e8400-e29b-41d4-a716-446655440008",
             user_role="manager",
-            user_teams=["team1", "team2", "sales manager"],
             user_departments=["dept1", "dept2"]
         )
 
@@ -492,6 +487,5 @@ class TestReadTaskEndpoint:
         mock_get_tasks.assert_called_once_with(
             user_id="550e8400-e29b-41d4-a716-446655440009",
             user_role="manager",
-            user_teams=["finance managers"],
             user_departments=["finance"]
         )
