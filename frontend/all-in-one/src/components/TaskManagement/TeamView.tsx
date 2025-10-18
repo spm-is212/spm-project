@@ -129,7 +129,7 @@ const TeamView = () => {
 
   // Apply sorting only (no filtering)
   useEffect(() => {
-    let sorted = [...tasks];
+    const sorted = [...tasks];
 
     // Sort tasks (priority, status, title only - no due_date)
     sorted.sort((a, b) => {

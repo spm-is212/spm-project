@@ -93,5 +93,5 @@ export interface TaskUpdatePayload {
         assignee_ids: string[];
         is_archived?: boolean;
     };
-    subtasks: {};
+    subtasks: Record<string, never>;
 }
