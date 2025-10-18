@@ -73,7 +73,6 @@ async def update_task_endpoint(
     try:
         user_id = user["sub"]
         user_role = user["role"]
-        user_teams = user.get("teams", [])
 
         request_dict = json.loads(task_data)
         request = TaskUpdateRequest(**request_dict)
@@ -121,7 +120,6 @@ async def update_task_endpoint(
             main_task_id=request.main_task_id,
             user_id=user_id,
             user_role=user_role,
-            user_teams=user_teams,
             main_task=request.main_task,
             subtasks=request.subtasks,
             new_subtasks=request.new_subtasks
@@ -140,18 +138,22 @@ async def update_task_endpoint(
 
 @router.get("/readTasks")
 def read_tasks_endpoint(user: dict = Depends(get_current_user)):
-    """Read tasks based on user access control rules"""
+    """
+    Read tasks based on user access control rules.
+    Access control is based on:
+    - Role hierarchy (managing_director > director > manager > staff)
+    - Project collaboration (tasks in projects where user is a collaborator)
+    - Direct task assignment (tasks where user is an assignee)
+    """
     try:
         user_id = user["sub"]
         user_role = user["role"]
-        user_teams = user.get("teams", [])
         user_departments = user.get("departments", [])
 
         task_reader = TaskReader()
         tasks = task_reader.get_tasks_for_user(
             user_id=user_id,
             user_role=user_role,
-            user_teams=user_teams,
             user_departments=user_departments
         )
 
@@ -166,14 +168,12 @@ def read_archived_tasks_endpoint(user: dict = Depends(get_current_user)):
     try:
         user_id = user["sub"]
         user_role = user["role"]
-        user_teams = user.get("teams", [])
         user_departments = user.get("departments", [])
 
         task_reader = TaskReader()
         archived_subtasks = task_reader.get_archived_subtasks_for_user(
             user_id=user_id,
             user_role=user_role,
-            user_teams=user_teams,
             user_departments=user_departments
         )
 
@@ -201,7 +201,6 @@ def filter_tasks_by_due_date(
     try:
         user_id = user["sub"]
         user_role = user["role"]
-        user_teams = user.get("teams", [])
         user_departments = user.get("departments", [])
 
         # Get all tasks user has access to
@@ -209,7 +208,6 @@ def filter_tasks_by_due_date(
         tasks = task_reader.get_tasks_for_user(
             user_id=user_id,
             user_role=user_role,
-            user_teams=user_teams,
             user_departments=user_departments
         )
 

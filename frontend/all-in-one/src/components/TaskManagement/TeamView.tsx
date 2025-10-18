@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Users, Building, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, User, Filter, AlertCircle, CheckCircle, Clock, XCircle, Folder, Building, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import { API_ENDPOINTS } from '../../config/api';
@@ -10,7 +10,6 @@ interface Project {
   name: string;
   description?: string;
   collaborator_ids: string[];
-  team_id?: string; // Deprecated, for backward compatibility
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -28,15 +27,7 @@ interface TaskWithProject extends Omit<Task, 'owner_user_id' | 'is_archived'> {
   is_archived?: boolean;
 }
 
-interface Team {
-  id: string;
-  name: string;
-  department_id?: string;
-  member_count?: number;
-}
-
 const TeamView = () => {
-  const [teams, setTeams] = useState<Team[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<TaskWithProject[]>([]);
@@ -46,7 +37,6 @@ const TeamView = () => {
   const [userInfo, setUserInfo] = useState<{ email: string; role: string; department?: string; department_id?: string; user_id?: string } | null>(null);
 
   // Filters
-  const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [startDate, setStartDate] = useState<string>('');
@@ -71,29 +61,6 @@ const TeamView = () => {
       console.log('[TeamView] No user from token!');
     }
   }, []);
-
-  // Fetch user's teams
-  const fetchTeams = useCallback(async () => {
-    try {
-      const data = await apiFetch(API_ENDPOINTS.TEAMS.MY_TEAMS);
-
-      // Backend should return team objects with valid UUIDs
-      const teamsData = data.teams || [];
-
-      // Validate that we have proper team objects with UUIDs
-      const validTeams = teamsData.filter((team: Team) =>
-        team && typeof team === 'object' && team.id && team.name
-      );
-
-      setTeams(validTeams);
-      if (validTeams.length > 0 && !selectedTeam) {
-        setSelectedTeam(validTeams[0].id || '');
-      }
-    } catch (err: unknown) {
-      console.error(`Failed to fetch teams: ${err instanceof Error ? err.message : String(err)}`);
-      setError('Failed to load teams');
-    }
-  }, [selectedTeam]);
 
   // Fetch all projects accessible to the user
   const fetchProjects = useCallback(async () => {
@@ -191,12 +158,11 @@ const TeamView = () => {
 
   // Load data on mount
   useEffect(() => {
-    document.title = "My Teams";
-    fetchTeams();
+    document.title = "My Projects";
     fetchTeamMembers();
     fetchTeamTasks();
     fetchProjects();
-  }, [fetchTeams, fetchTeamMembers, fetchTeamTasks, fetchProjects]);
+  }, [fetchTeamMembers, fetchTeamTasks, fetchProjects]);
 
   // Get projects where current user is a collaborator or has tasks assigned
   const getUserCollaboratorProjects = () => {
@@ -378,43 +344,6 @@ const TeamView = () => {
           >
             ×
           </button>
-        </div>
-      )}
-
-      {/* Teams List - Hidden for Staff */}
-      {userInfo?.role?.toLowerCase() !== 'staff' && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
-          <div className="flex items-center mb-4">
-            <Users className="w-5 h-5 text-gray-600 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-900">My Teams</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {teams.length === 0 ? (
-              <div className="col-span-3 text-center py-8 text-gray-500">
-                {loading ? 'Loading projects...' : 'You are not assigned to any projects yet.'}
-              </div>
-            ) : (
-              teams.map(team => (
-                <div
-                  key={team.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                    selectedTeam === team.id
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow'
-                  }`}
-                  onClick={() => setSelectedTeam(team.id)}
-                >
-                  <h3 className="font-semibold text-gray-900">{team.name}</h3>
-                  {team.member_count !== undefined && (
-                    <p className="text-sm text-gray-600 mt-2">{team.member_count} members</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    {projects.filter(p => p.team_id === team.id).length} projects
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
         </div>
       )}
 
