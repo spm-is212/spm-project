@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield, Paperclip, FileText, Trash2 } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken, getAccessToken } from '../../utils/auth';
-import type { Task, NewTask, NewSubtask, User as UserType, TaskPriority } from '../../types/Task';
+import type { Task, NewTask, NewSubtask, User as UserType } from '../../types/Task';
 
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -750,7 +750,6 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
 
     // Check privileged teams (note: userInfo doesn't have teams, so this will always be false for now)
     // This would need to be extended when team information is available in userInfo
-    const privilegedTeams = ['sales manager', 'finance managers'];
     // return userInfo.teams?.some(team => privilegedTeams.includes(team)) || false;
 
     return false;

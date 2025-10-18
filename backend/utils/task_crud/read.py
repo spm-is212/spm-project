@@ -4,8 +4,6 @@ from backend.utils.user_crud.user_manager import UserManager
 from backend.utils.task_crud.constants import (
     TASKS_TABLE_NAME,
     ADMIN_ROLE,
-    MANAGER_ROLE,
-    STAFF_ROLE,
     OWNER_USER_ID_FIELD,
     ASSIGNEE_IDS_FIELD,
     PARENT_ID_FIELD,
