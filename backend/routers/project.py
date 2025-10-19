@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from typing import List
 from backend.utils.security import get_current_user
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
