@@ -9,16 +9,13 @@ from datetime import date, timedelta
 # Database table names
 TASKS_TABLE_NAME = "tasks"
 
-# User roles with specific access permissions
-MANAGING_DIRECTOR_ROLE = "managing_director"
-DIRECTOR_ROLE = "director"
+# User roles with specific access permissions - 3-tier role system
+ADMIN_ROLE = "admin"
 MANAGER_ROLE = "manager"
+STAFF_ROLE = "staff"
 
-# Teams with privileged access (department-wide visibility)
-PRIVILEGED_TEAMS = ["sales manager", "finance managers"]
-
-# User roles that can remove assignees
-ASSIGNEE_REMOVAL_ROLES = ["manager", "director", "managing_director"]
+# User roles that can remove assignees (admin and manager)
+ASSIGNEE_REMOVAL_ROLES = ["admin", "manager"]
 
 # Task and subtask field names
 OWNER_USER_ID_FIELD = "owner_user_id"
