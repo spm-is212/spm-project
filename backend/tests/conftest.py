@@ -68,3 +68,19 @@ def clean_test_database():
         crud.client.table("users_test").delete().neq("uuid", "00000000-0000-0000-0000-000000000000").execute()
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def mock_notification_service():
+    """
+    Automatically mock NotificationService for all tests to prevent real email sending.
+    """
+    with patch("backend.utils.task_crud.create.NotificationService") as MockNotifCreate, \
+         patch("backend.utils.task_crud.update.NotificationService") as MockNotifUpdate:
+        mock_instance = MockNotifCreate.return_value
+        mock_instance.notify_task_event.return_value = None
+
+        # Make both point to the same mock instance
+        MockNotifUpdate.return_value = mock_instance
+
+        yield mock_instance

@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from backend.utils.notif_util.notification_service import NotificationService
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.schemas.task import TaskUpdate, SubtaskCreate, MAIN_TASK_PARENT_ID
 from backend.utils.task_crud.create import TaskCreator
@@ -23,6 +24,7 @@ from backend.utils.task_crud.constants import (
     UPDATED_SUBTASKS_RESPONSE_KEY,
     OWNER_USER_ID_FIELD,
     DEFAULT_IS_ARCHIVED,
+    NOTIFICATION_EMAIL
 )
 
 
@@ -72,6 +74,16 @@ class TaskUpdater:
             MAIN_TASK_RESPONSE_KEY: None,
             UPDATED_SUBTASKS_RESPONSE_KEY: []
         }
+        previous_main_task_data = self.crud.select(self.table_name, filters={TASK_ID_FIELD: main_task_id})
+        previous_main_task = previous_main_task_data[0] if previous_main_task_data else {}
+
+        previous_subtasks: Dict[str, dict] = {}
+        if subtasks:
+            # fetch the previous row for each subtask we plan to update
+            for subtask_id in subtasks.keys():
+                prev = self.crud.select(self.table_name, filters={TASK_ID_FIELD: subtask_id})
+                if prev:
+                    previous_subtasks[subtask_id] = prev[0]
 
         # --- MAIN TASK UPDATE ---
         if main_task:
@@ -260,5 +272,52 @@ class TaskUpdater:
                 results = self.crud.insert(self.table_name, subtask_dict)
                 if results:
                     result[UPDATED_SUBTASKS_RESPONSE_KEY].append(results)
+
+        try:
+            ns = NotificationService()
+
+            def decide_action(old_row: dict, new_row: dict) -> str:
+                # Priority: completed > reassigned > updated
+                old_status = (old_row or {}).get(STATUS_FIELD)
+                new_status = (new_row or {}).get(STATUS_FIELD)
+
+                old_assignees = set((old_row or {}).get(ASSIGNEE_IDS_FIELD, []))
+                new_assignees = set((new_row or {}).get(ASSIGNEE_IDS_FIELD, []))
+
+                if old_status != new_status and new_status == "COMPLETED":
+                    return "completed"
+                if old_assignees != new_assignees:
+                    return "reassigned"
+                return "updated"
+
+            # 1) Main task notification (only if it was actually updated)
+            if result[MAIN_TASK_RESPONSE_KEY]:
+                updated_main = result[MAIN_TASK_RESPONSE_KEY]
+                main_action = decide_action(previous_main_task, updated_main)
+                main_receivers = list(set(updated_main.get(ASSIGNEE_IDS_FIELD, [])))
+                ns.notify_task_event(
+                    sender_id=user_id,
+                    action=main_action,
+                    task=updated_main,
+                    receivers=main_receivers,
+                    email_receivers=[NOTIFICATION_EMAIL]
+                )
+
+            for updated_sub in result[UPDATED_SUBTASKS_RESPONSE_KEY]:
+                sub_id = updated_sub.get(TASK_ID_FIELD)
+                old_sub = previous_subtasks.get(sub_id, {})
+                sub_action = decide_action(old_sub, updated_sub)
+                sub_receivers = list(set(updated_sub.get(ASSIGNEE_IDS_FIELD, [])))
+                ns.notify_task_event(
+                    sender_id=user_id,
+                    action=sub_action,
+                    task=updated_sub,
+                    receivers=sub_receivers,
+                    email_receivers=[NOTIFICATION_EMAIL]
+                )
+
+        except Exception as e:
+            print(f"[TaskUpdater] Notification failed: {e}")
+
 
         return result

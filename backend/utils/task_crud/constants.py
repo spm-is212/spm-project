@@ -4,7 +4,11 @@ Task CRUD constants and configuration values.
 This module contains all hard-coded values used throughout the task CRUD operations
 to centralize configuration and improve maintainability.
 """
+import os
+from dotenv import load_dotenv
 from datetime import date, timedelta
+
+load_dotenv()
 
 # Database table names
 TASKS_TABLE_NAME = "tasks"
@@ -60,3 +64,5 @@ FILE_UPLOAD_ERROR = "Failed to upload file"
 
 def make_future_due_date():
     return (date.today() + timedelta(days=7)).isoformat()
+
+NOTIFICATION_EMAIL = os.getenv("NOTIFICATION_EMAIL")
