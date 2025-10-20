@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from dotenv import load_dotenv
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
+from unittest.mock import patch
 
 # Load environment variables for testing from project root
 env_path = Path(__file__).parent.parent.parent / '.env'
