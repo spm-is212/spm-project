@@ -11,7 +11,7 @@ SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASS = os.getenv("SMTP_PASS")
 SENDER_NAME = os.getenv("SENDER_NAME", "Smart Task Manager")
 
-def ail(to_email: str, subject: str, body: str) -> None:
+def send_email(to_email: str, subject: str, body: str) -> None:
     """
     Sends an email using SMTP.
 
