@@ -3,9 +3,7 @@ from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.utils.user_crud.user_manager import UserManager
 from backend.utils.task_crud.constants import (
     TASKS_TABLE_NAME,
-    MANAGING_DIRECTOR_ROLE,
-    DIRECTOR_ROLE,
-    PRIVILEGED_TEAMS,
+    ADMIN_ROLE,
     OWNER_USER_ID_FIELD,
     ASSIGNEE_IDS_FIELD,
     PARENT_ID_FIELD,
@@ -29,30 +27,27 @@ class TaskReader:
         self.crud = SupabaseCRUD()
         self.user_manager = UserManager()
         self.table_name = TASKS_TABLE_NAME
-        self.privileged_teams = PRIVILEGED_TEAMS
 
-    def get_tasks_for_user(self, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+    def get_tasks_for_user(self, user_id: str, user_role: str, user_departments: List[str]) -> List[Dict[str, Any]]:
         """
         Retrieve tasks based on hierarchical access control rules.
 
-        Access Control Hierarchy:
-        - Managing Director: All tasks across all departments
-        - Director: All tasks within their departments
-        - Privileged Teams: All tasks within their departments
-        - Regular Staff/Managers: Only tasks where they are assigned
+        Access Control Hierarchy (3-tier):
+        - Admin: All tasks across all departments
+        - Manager: All tasks they are assigned to (can modify assignees)
+        - Staff: Only tasks where they are assigned
 
         Args:
             user_id: Unique identifier of the requesting user
-            user_role: User's organizational role (staff, manager, director, managing_director)
-            user_teams: List of teams the user belongs to
+            user_role: User's organizational role (admin, manager, staff)
             user_departments: List of departments the user belongs to
 
         Returns:
             List of task dictionaries the user is authorized to access
         """
-        return self._apply_access_control(user_id, user_role, user_teams, user_departments, include_archived=False)
+        return self._apply_access_control(user_id, user_role, user_departments, include_archived=False)
 
-    def get_task_by_id(self, task_id: str, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str]) -> Optional[Dict[str, Any]]:
+    def get_task_by_id(self, task_id: str, user_id: str, user_role: str, user_departments: List[str]) -> Optional[Dict[str, Any]]:
         """
         Get a specific task by ID if user has access.
 
@@ -60,13 +55,12 @@ class TaskReader:
             task_id: ID of the task to retrieve
             user_id: Current user's ID
             user_role: Current user's role
-            user_teams: Current user's teams
             user_departments: Current user's departments
 
         Returns:
             Task data if accessible, None otherwise
         """
-        accessible_tasks = self.get_tasks_for_user(user_id, user_role, user_teams, user_departments)
+        accessible_tasks = self.get_tasks_for_user(user_id, user_role, user_departments)
 
         for task in accessible_tasks:
             if task[TASK_ID_FIELD] == task_id:
@@ -74,7 +68,7 @@ class TaskReader:
 
         return None
 
-    def get_archived_subtasks_for_user(self, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+    def get_archived_subtasks_for_user(self, user_id: str, user_role: str, user_departments: List[str]) -> List[Dict[str, Any]]:
         """
         Retrieve archived subtasks with their associated main tasks.
 
@@ -84,13 +78,12 @@ class TaskReader:
         Args:
             user_id: ID of the requesting user
             user_role: User's organizational role
-            user_teams: List of teams the user belongs to
             user_departments: List of departments the user belongs to
 
         Returns:
             List of dictionaries containing 'subtask' and 'main_task' keys
         """
-        accessible_tasks = self._get_all_accessible_tasks(user_id, user_role, user_teams, user_departments)
+        accessible_tasks = self._get_all_accessible_tasks(user_id, user_role, user_departments)
 
         result = []
         main_task_cache = {}
@@ -110,34 +103,35 @@ class TaskReader:
         return result
 
 
-    def _apply_access_control(self, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str], include_archived: bool = False) -> List[Dict[str, Any]]:
+    def _apply_access_control(self, user_id: str, user_role: str, user_departments: List[str], include_archived: bool = False) -> List[Dict[str, Any]]:
         """
         Apply hierarchical access control rules to retrieve tasks.
 
         Centralized access control logic used by both regular and archived task retrieval.
 
+        Access control is now based purely on:
+        - Role hierarchy (no more privileged teams check)
+        - Project collaboration
+        - Task assignment
+
         Args:
             user_id: ID of the requesting user
             user_role: User's organizational role
-            user_teams: List of teams the user belongs to
             user_departments: List of departments the user belongs to
             include_archived: Whether to include archived tasks
 
         Returns:
             List of tasks the user is authorized to access
         """
-        if user_role == MANAGING_DIRECTOR_ROLE:
+        if user_role.lower() in [ADMIN_ROLE, "managing_director"]:
             return self._get_all_tasks()
-
-        if user_role == DIRECTOR_ROLE:
+        elif user_role.lower() == "director":
             return self._filter_tasks_by_departments(user_departments, include_archived)
-
-        if self._is_privileged_team(user_teams):
-            return self._filter_tasks_by_departments(user_departments, include_archived)
-
+        # Manager and staff see only their assigned tasks
+        # (Managers have additional privileges for updating, but same read access)
         return self._filter_tasks_by_assignment(user_id, include_archived)
 
-    def _get_all_accessible_tasks(self, user_id: str, user_role: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+    def _get_all_accessible_tasks(self, user_id: str, user_role: str, user_departments: List[str]) -> List[Dict[str, Any]]:
         """
         Internal method to get all accessible tasks including archived ones.
 
@@ -147,13 +141,12 @@ class TaskReader:
         Args:
             user_id: ID of the requesting user
             user_role: User's organizational role
-            user_teams: List of teams the user belongs to
             user_departments: List of departments the user belongs to
 
         Returns:
             List of all accessible tasks including archived ones
         """
-        return self._apply_access_control(user_id, user_role, user_teams, user_departments, include_archived=True)
+        return self._apply_access_control(user_id, user_role, user_departments, include_archived=True)
 
 
     def _get_all_tasks(self) -> List[Dict[str, Any]]:
@@ -198,24 +191,21 @@ class TaskReader:
         """
         return self._filter_tasks_by_departments(departments, include_archived=True)
 
-    def _get_tasks_for_regular_user(self, user_id: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+    def _get_tasks_for_regular_user(self, user_id: str) -> List[Dict[str, Any]]:
         """
         Retrieve tasks for regular users and managers based on assignment.
 
         Regular users and managers can only see tasks where they are explicitly assigned.
-        Team and department memberships do not grant additional visibility.
 
         Args:
             user_id: ID of the user requesting tasks
-            user_teams: User's team memberships (currently unused)
-            user_departments: User's department memberships (currently unused)
 
         Returns:
             List of tasks where the user is assigned
         """
         return self._filter_tasks_by_assignment(user_id, include_archived=False)
 
-    def _get_all_tasks_for_regular_user(self, user_id: str, user_teams: List[str], user_departments: List[str]) -> List[Dict[str, Any]]:
+    def _get_all_tasks_for_regular_user(self, user_id: str) -> List[Dict[str, Any]]:
         """
         Retrieve all tasks including archived ones for regular users.
 
@@ -224,8 +214,6 @@ class TaskReader:
 
         Args:
             user_id: ID of the user requesting tasks
-            user_teams: User's team memberships (currently unused)
-            user_departments: User's department memberships (currently unused)
 
         Returns:
             List of all assigned tasks including archived ones
@@ -263,20 +251,6 @@ class TaskReader:
         return self._filter_tasks_by_assignment(user_id, include_archived=True)
 
 
-    def _is_privileged_team(self, user_teams: List[str]) -> bool:
-        """
-        Determine if user belongs to any privileged teams.
-
-        Privileged teams have department-wide access similar to directors.
-        Currently includes 'sales manager' and 'finance managers'.
-
-        Args:
-            user_teams: List of teams the user belongs to
-
-        Returns:
-            True if user is in any privileged team, False otherwise
-        """
-        return any(team in self.privileged_teams for team in user_teams)
 
     def _get_department_user_ids(self, departments: List[str]) -> set:
         """
