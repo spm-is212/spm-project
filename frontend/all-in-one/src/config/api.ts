@@ -13,12 +13,6 @@ export const API_ENDPOINTS = {
     USERS: 'auth/users',
   },
 
-  // Team endpoints
-  TEAMS: {
-    MY_TEAMS: 'teams/my-teams',
-    TEAM_TASKS: 'teams/team-tasks',
-  },
-
   // Project endpoints
   PROJECTS: {
     CREATE: 'projects/create',
@@ -36,4 +30,11 @@ export const API_ENDPOINTS = {
     UPDATE: 'tasks/updateTask',
     FILTER_BY_DUE_DATE: 'tasks/filterByDueDate',
   },
+  
+  NOTIFICATIONS: {
+    LIST: 'notifications/',
+  },
+
 } as const;
+
+

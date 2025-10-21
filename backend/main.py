@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth, task, health, crud_test, team, project
+from backend.routers import auth, task, health, crud_test, project , notification
 
 app = FastAPI(title="SPM Project API")
 
@@ -24,5 +24,5 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(task.router)
 app.include_router(crud_test.router)
-app.include_router(team.router)
 app.include_router(project.router)
+app.include_router(notification.router) 

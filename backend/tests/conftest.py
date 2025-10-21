@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 from dotenv import load_dotenv
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from unittest.mock import patch
@@ -29,7 +30,7 @@ def setup_test_environment():
             "id": "00000000-0000-0000-0000-000000000000",
             "name": "Default Test Project",
             "description": "Default project for tests",
-            "team_id": "00000000-0000-0000-0000-000000000000"  # Use same UUID for team_id
+            "collaborator_ids": []  # Empty collaborators for test project
         }
         # Insert directly into projects table (not projects_test since it doesn't exist)
         # The tasks table has FK to projects, not projects_test

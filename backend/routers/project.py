@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from typing import List
 from backend.utils.security import get_current_user
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 from backend.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
@@ -24,10 +24,6 @@ def create_project(project: ProjectCreate, user: dict = Depends(get_current_user
             "created_at": datetime.utcnow().isoformat(),
         }
 
-        # Add team_id if provided (for backward compatibility)
-        if project.team_id:
-            project_data["team_id"] = project.team_id
-
         # Insert into database
         result = crud.client.table("projects").insert(project_data).execute()
 
@@ -40,12 +36,9 @@ def create_project(project: ProjectCreate, user: dict = Depends(get_current_user
 
 
 @router.get("/list", response_model=List[ProjectResponse])
-def list_projects(team_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+def list_projects(user: dict = Depends(get_current_user)):
     """
     List projects where the user is a collaborator or has assigned tasks
-
-    Args:
-        team_id: Optional team ID to filter projects (deprecated, for backward compatibility)
     """
     try:
         crud = SupabaseCRUD()
@@ -58,8 +51,8 @@ def list_projects(team_id: Optional[str] = None, user: dict = Depends(get_curren
         if not projects.data:
             return []
 
-        # For directors/managing directors, return all projects
-        if user_role in ["director", "managing_director"]:
+        # For admins, return all projects
+        if user_role.lower() == "admin":
             user_projects = projects.data
         else:
             # Method 1: Filter by collaborator_ids
@@ -81,10 +74,6 @@ def list_projects(team_id: Optional[str] = None, user: dict = Depends(get_curren
             user_project_ids.update(task_project_ids)
 
             user_projects = [p for p in projects.data if p['id'] in user_project_ids]
-
-        # Optional: filter by team_id if provided (backward compatibility)
-        if team_id:
-            user_projects = [p for p in user_projects if p.get("team_id") == team_id]
 
         return user_projects
     except ConnectionError as e:
@@ -135,8 +124,8 @@ def update_project(
         # Verify user is a collaborator or has permission to update
         project_data = existing.data[0]
         if user_id not in project_data.get("collaborator_ids", []):
-            # Allow directors/managing directors to update
-            if user.get("role") not in ["director", "managing_director"]:
+            # Allow admins to update any project
+            if user.get("role", "").lower() != "admin":
                 raise HTTPException(status_code=403, detail="Only project collaborators can update the project")
 
         # Prepare update data (only include fields that are provided)
@@ -147,8 +136,6 @@ def update_project(
             update_data["description"] = project.description
         if project.collaborator_ids is not None:
             update_data["collaborator_ids"] = project.collaborator_ids
-        if project.team_id is not None:
-            update_data["team_id"] = project.team_id
 
         update_data["updated_at"] = datetime.utcnow().isoformat()
 

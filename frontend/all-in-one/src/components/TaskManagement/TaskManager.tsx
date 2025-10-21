@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Save, X, Calendar, User, AlertCircle, Archive, ArchiveRestore, Shield, Paperclip, FileText, Trash2 } from 'lucide-react';
 import { apiFetch } from "../../utils/api";
-import { getUserFromToken } from '../../utils/auth';
+import { getUserFromToken, getAccessToken } from '../../utils/auth';
 import type { Task, NewTask, NewSubtask, User as UserType, TaskPriority } from '../../types/Task';
 
 const MAX_FILE_SIZE_MB = 50;
@@ -64,7 +64,7 @@ const TaskManager = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (token) {
       try {
         const payloadBase64 = token.split(".")[1];
@@ -140,7 +140,7 @@ function sortByDueDate(tasks: Task[]): Task[] {
 }
 
 function getUserIdFromToken(): string | null {
-  const token = localStorage.getItem("access_token");
+  const token = getAccessToken();
   if (!token) return null;
 
   try {
@@ -301,7 +301,7 @@ const createTask = async (taskData: NewTask): Promise<void> => {
       formData.append('file', selectedFile);
     }
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/createTask`, {
       method: "POST",
       headers: {
@@ -381,7 +381,7 @@ const updateTask = async (taskId: string, taskData: Partial<Task>): Promise<void
     }
     formData.append('remove_file', removeFile.toString());
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
       headers: {
@@ -427,7 +427,7 @@ const archiveTask = async (taskId: string, isArchived: boolean): Promise<void> =
     formData.append('task_data', JSON.stringify(payload));
     formData.append('remove_file', 'false');
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
       headers: {
@@ -495,7 +495,7 @@ const updateSubtask = async (mainTaskId: string, subtaskId: string, subtaskData:
     formData.append('task_data', JSON.stringify(payload));
     formData.append('remove_file', 'false');
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
       headers: {
@@ -538,7 +538,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
     formData.append('task_data', JSON.stringify(payload));
     formData.append('remove_file', 'false');
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tasks/updateTask`, {
       method: "PUT",
       headers: {
