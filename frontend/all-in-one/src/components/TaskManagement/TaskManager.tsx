@@ -757,18 +757,18 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white">
-      <div className="mb-8">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h1 className="text-3xl font-bold text-gray-900">Smart Task Manager</h1>
+    <div className="max-w-6xl mx-auto p-4 md:p-6 bg-white">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Smart Task Manager</h1>
         </div>
-        <p className="text-gray-600">Manage your tasks efficiently with full CRUD operations</p>
-        <div className="flex space-x-2">
+        <p className="text-sm sm:text-base text-gray-600 mb-3 md:mb-4">Manage your tasks efficiently with full CRUD operations</p>
+        <div className="flex flex-wrap items-center gap-2">
   <label className="text-sm text-gray-600">Sort by:</label>
   <select
     value={sortMode}
     onChange={(e) => setSortMode(e.target.value as 'priority' | 'date')}
-    className="border rounded px-2 py-1 text-sm"
+    className="border rounded px-2 py-1 text-sm min-h-[44px]"
   >
     <option value="priority">Priority</option>
     <option value="date">Due Date</option>
@@ -777,14 +777,14 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
 
 
         {userInfo && (
-          <div className="mb-6 p-4 bg-gray-50 border rounded-lg flex items-center space-x-4 shadow-sm">
+          <div className="mt-4 mb-4 md:mb-6 p-3 md:p-4 bg-gray-50 border rounded-lg flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 shadow-sm">
             <div className="flex items-center space-x-2">
-              <User className="w-5 h-5 text-blue-600" />
-              <span className="text-gray-800 font-medium">{userInfo.department}</span>
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+              <span className="text-sm sm:text-base text-gray-800 font-medium">{userInfo.department}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-green-600" />
-              <span className="uppercase text-sm font-semibold text-green-700">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+              <span className="uppercase text-xs sm:text-sm font-semibold text-green-700">
                 {userInfo.role}
               </span>
             </div>
@@ -794,12 +794,12 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg flex items-center">
-          <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
-          <span className="text-red-700">{error}</span>
+        <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-100 border border-red-300 rounded-lg flex items-start sm:items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+          <span className="text-sm sm:text-base text-red-700 flex-1">{error}</span>
           <button
             onClick={() => setError('')}
-            className="ml-auto text-red-600 hover:text-red-800"
+            className="text-red-600 hover:text-red-800 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
           >
             <X className="w-4 h-4" />
           </button>
@@ -807,30 +807,30 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       )}
 
       {/* Action Buttons */}
-      <div className="mb-6 flex space-x-4">
+      <div className="mb-4 md:mb-6">
         <button
           onClick={() => setShowAddForm(true)}
           disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[44px]"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add New Task
+          <span className="text-sm sm:text-base">Add New Task</span>
         </button>
       </div>
 
       {/* Add Task Form */}
       {showAddForm && (
-        <div className="mb-8 p-6 bg-gray-50 rounded-lg border">
-          <h2 className="text-xl font-semibold mb-4">Create New Task</h2>
-                        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mb-6 md:mb-8 p-4 md:p-6 bg-gray-50 rounded-lg border">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Create New Task</h2>
+                        <div className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                 <input
                   type="text"
                   value={newTask.title}
                   onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                   placeholder="Enter task title"
                   required
                 />
@@ -840,7 +840,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                 <select
                   value={newTask.project_id}
                   onChange={(e) => setNewTask({...newTask, project_id: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                   required
                 >
                   <option value="">Select a project...</option>
@@ -856,7 +856,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                 <select
                   value={newTask.status}
                   onChange={(e) => setNewTask({...newTask, status: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                 >
                   <option value="TO_DO">To Do</option>
                   <option value="IN_PROGRESS">In Progress</option>
@@ -872,7 +872,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                 max="10"
                 value={newTask.priority}
                 onChange={(e) => setNewTask({ ...newTask, priority: Number(e.target.value) })}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
               />
             </div>
               <div>
@@ -883,7 +883,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                   onChange={(e) => {
                     setNewTask({...newTask, due_date: e.target.value});
                   }}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                 />
               </div>
               <div>
@@ -891,7 +891,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                 <select
                   value={newTask.recurrence_rule}
                   onChange={(e) => setNewTask({...newTask, recurrence_rule: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                 >
                   <option value="">Does not repeat</option>
                   <option value="DAILY">Daily</option>
@@ -909,7 +909,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       min="1"
                       value={newTask.recurrence_interval}
                       onChange={(e) => setNewTask({...newTask, recurrence_interval: parseInt(e.target.value)})}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                     />
                   </div>
                   <div>
@@ -918,7 +918,7 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                       type="date"
                       value={newTask.recurrence_end_date}
                       onChange={(e) => setNewTask({...newTask, recurrence_end_date: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] text-sm sm:text-base"
                     />
                   </div>
                 </>
@@ -1225,15 +1225,15 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
               )}
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
               <button
                 type="button"
                 onClick={handleCreateSubmit}
                 disabled={loading}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[44px]"
               >
                 <Save className="w-4 h-4 mr-2" />
-                Create Task
+                <span className="text-sm sm:text-base">Create Task</span>
               </button>
               <button
                 type="button"
@@ -1243,10 +1243,10 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
                   setShowSubtaskForm(false);
                   setSelectedFile(null);
                 }}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center"
+                className="w-full sm:w-auto bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center justify-center min-h-[44px]"
               >
                 <X className="w-4 h-4 mr-2" />
-                Cancel
+                <span className="text-sm sm:text-base">Cancel</span>
               </button>
             </div>
           </div>
@@ -1262,9 +1262,9 @@ const archiveSubtask = async (mainTaskId: string, subtaskId: string, isArchived:
       )}
 
       {/* Tasks Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {tasks.map((task) => (
-          <div key={task.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div key={task.id} className="bg-white border border-gray-200 rounded-lg p-4 md:p-6 shadow-sm hover:shadow-md transition-shadow">
             {editingTask && editingTask.id === task.id ? (
               /* Edit Form */
               <div className="space-y-3">
