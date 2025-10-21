@@ -76,7 +76,12 @@ def mock_notification_service():
     """
     Automatically mock NotificationService for all tests to prevent real email sending.
     """
-    with patch("backend.utils.task_crud.create.NotificationService") as MockNotif:
-        mock_instance = MockNotif.return_value
+    with patch("backend.utils.task_crud.create.NotificationService") as MockNotifCreate, \
+         patch("backend.utils.task_crud.update.NotificationService") as MockNotifUpdate:
+        mock_instance = MockNotifCreate.return_value
         mock_instance.notify_task_event.return_value = None
+
+        # Make both point to the same mock instance
+        MockNotifUpdate.return_value = mock_instance
+
         yield mock_instance
