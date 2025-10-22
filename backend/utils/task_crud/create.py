@@ -24,6 +24,7 @@ from backend.utils.task_crud.constants import (
    DEFAULT_COMMENTS,
    DEFAULT_ATTACHMENTS,
    DEFAULT_IS_ARCHIVED,
+   NOTIFICATION_EMAIL
 )
 
 
@@ -162,15 +163,12 @@ class TaskCreator:
                if sub.assignee_ids:
                    receivers.update(sub.assignee_ids)
 
-       hardcoded_email = "reneefongsh@gmail.com"  # change this to your address
-
-
        notification_service.notify_task_event(
            sender_id=user_id,
            action="created",
            task=created_main_task,
            receivers=list(receivers),
-           email_receivers=[hardcoded_email]
+           email_receivers=[NOTIFICATION_EMAIL]
        )
 
 
