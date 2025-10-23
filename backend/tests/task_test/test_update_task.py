@@ -1,4 +1,4 @@
-from backend.tests.task_test.conftest import client
+from backend.tests.conftest import client
 from backend.utils.task_crud.constants import make_future_due_date
 import json
 
