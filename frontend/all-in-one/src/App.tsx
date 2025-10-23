@@ -4,6 +4,7 @@ import TaskManager from './components/TaskManagement/TaskManager'
 import TeamView from './components/TaskManagement/TeamView.tsx';
 import Layout from './components/nav/Layout.tsx';
 import CalendarView from './components/DeadlineSchedule/calendarView.tsx';
+import Reports from './components/ReportGen/reports.tsx';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/taskmanager" element={<TaskManager />} />
           <Route path="/team" element={<TeamView />} />
           <Route path="/calendarview" element={<CalendarView />} />
+          <Route path="/reports" element={<Reports />} />
         </Route>
       </Routes>
     </div>

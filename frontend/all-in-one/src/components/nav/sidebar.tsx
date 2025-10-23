@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { CheckSquare, Users, Menu, X, LogOut, CheckCircle, Calendar } from 'lucide-react';
+import { CheckSquare, Users, Menu, X, LogOut, CheckCircle, Calendar, ChartBar } from 'lucide-react';
 import NotificationBell from '../Notifications';
 
 export default function Sidebar() {
@@ -29,6 +29,7 @@ export default function Sidebar() {
     { name: 'Task Manager', href: '/taskmanager', icon: CheckSquare },
     { name: 'Projects', href: '/team', icon: Users },
     { name: 'Calendar View', href: '/calendarview', icon: Calendar },
+    { name: 'Reports', href: '/reports', icon: ChartBar },
   ];
 
   const handleLogout = async () => {
