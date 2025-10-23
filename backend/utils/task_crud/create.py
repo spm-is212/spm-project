@@ -152,7 +152,7 @@ class TaskCreator:
 
                created_subtask = self.crud.insert(self.table_name, subtask_dict)
                result[SUBTASKS_RESPONSE_KEY].append(created_subtask)
-              
+
        notification_service = NotificationService()
 
 
