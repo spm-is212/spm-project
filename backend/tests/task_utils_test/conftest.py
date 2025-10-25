@@ -5,8 +5,34 @@ from backend.utils.task_crud.constants import make_future_due_date
 
 @pytest.fixture
 def mock_crud():
-    """Mock SupabaseCRUD for unit testing"""
-    return Mock()
+    """Mock SupabaseCRUD for unit testing (for both TaskCreator & TaskUpdater)"""
+    mock = Mock()
+
+    mock.select.return_value = [{
+        "id": "test-task-id",
+        "title": "Old title",
+        "status": "TODO",
+        "priority": 1,
+        "assignee_ids": ["user-1"],
+    }]
+
+    mock.insert.return_value = {
+        "id": "inserted-task-id",
+        "title": "Inserted task",
+        "status": "TODO",
+        "priority": 1,
+        "assignee_ids": ["user-1"],
+    }
+    mock.update.return_value = [{
+        "id": "test-task-id",
+        "title": "Updated title",
+        "status": "TODO",
+        "priority": 1,
+        "assignee_ids": ["user-1"],
+    }]
+    mock.delete.return_value = []
+
+    return mock
 
 
 @pytest.fixture
@@ -23,7 +49,7 @@ def sample_task_data():
         "parent_id": None,
         "comments": [],
         "attachments": [],
-        "is_archived": False
+        "is_archived": False,
     }
 
 
@@ -36,7 +62,7 @@ def sample_subtask_data():
         "due_date": (date.today() + timedelta(days=3)).isoformat(),
         "status": "TO_DO",
         "priority": 5,
-        "assignee_ids": ["00000000-0000-0000-0000-000000000001"]
+        "assignee_ids": ["00000000-0000-0000-0000-000000000001"],
     }
 
 
@@ -51,11 +77,14 @@ def mock_task_in_db():
         "status": "TO_DO",
         "priority": 8,
         "owner_user_id": "00000000-0000-0000-0000-000000000001",
-        "assignee_ids": ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"],
+        "assignee_ids": [
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+        ],
         "parent_id": None,
         "comments": [],
         "attachments": [],
         "is_archived": False,
         "created_at": "2025-09-22T00:00:00Z",
-        "updated_at": "2025-09-22T00:00:00Z"
+        "updated_at": "2025-09-22T00:00:00Z",
     }
