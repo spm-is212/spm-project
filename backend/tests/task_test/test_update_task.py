@@ -1,9 +1,8 @@
-from backend.tests.conftest import client
 from backend.utils.task_crud.constants import make_future_due_date
 import json
 
 
-def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_project):
+def test_update_main_task_success(client, auth_headers, patch_crud_for_testing, test_project):
     """Test updating a main task successfully"""
     # Create a task first
     create_payload = {
@@ -56,7 +55,7 @@ def test_update_main_task_success(auth_headers, patch_crud_for_testing, test_pro
     assert data["main_task"]["parent_id"] is None  # Should remain None
 
 
-def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing, test_project):
+def test_update_task_assignees_as_manager(client, auth_headers, patch_crud_for_testing, test_project):
     """Test that managers can add and remove assignees"""
     # Create a task with multiple assignees through API
     payload = {
@@ -99,7 +98,7 @@ def test_update_task_assignees_as_manager(auth_headers, patch_crud_for_testing, 
     assert "00000000-0000-0000-0000-000000000001" in data["main_task"]["assignee_ids"]
 
 
-def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_for_testing, test_project):
+def test_update_task_assignees_as_staff_add_only(client, staff_auth_headers, patch_crud_for_testing, test_project):
     """Test that staff can add assignees but not remove them"""
     # Create a task with one assignee through API
     payload = {
@@ -141,7 +140,7 @@ def test_update_task_assignees_as_staff_add_only(staff_auth_headers, patch_crud_
     assert len(data["main_task"]["assignee_ids"]) == 2
 
 
-def test_update_task_without_auth_fails():
+def test_update_task_without_auth_fails(client):
     """Test updating task without authentication fails"""
     update_payload = {
         "main_task_id": "fake-task-id",
@@ -158,7 +157,7 @@ def test_update_task_without_auth_fails():
     assert response.status_code == 403
 
 
-def test_update_nonexistent_task_fails(auth_headers, patch_crud_for_testing):
+def test_update_nonexistent_task_fails(client, auth_headers, patch_crud_for_testing):
     """Test updating a non-existent task fails"""
     update_payload = {
         "main_task_id": "00000000-0000-0000-0000-000000000000",

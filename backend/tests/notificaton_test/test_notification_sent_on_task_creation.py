@@ -1,8 +1,8 @@
-from backend.tests.conftest import client
 import json
 
+
 def test_notification_sent_on_task_creation(
-    auth_headers, sample_main_task, mock_notification_service,
+    client, auth_headers, sample_main_task, mock_notification_service,
     patch_crud_for_testing, test_project
 ):
     """Ensure a notification is triggered when a task is created"""
@@ -17,8 +17,8 @@ def test_notification_sent_on_task_creation(
     print(response.status_code, response.text)
     assert response.status_code == 200
 
-    mock_notification_service.assert_called_once()
-    call_args = mock_notification_service.call_args.kwargs
+    mock_notification_service.notify_task_event.assert_called_once()
+    call_args = mock_notification_service.notify_task_event.call_args.kwargs
 
     assert call_args["action"] == "created"
     assert "task" in call_args
