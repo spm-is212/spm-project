@@ -37,8 +37,10 @@ class TestCriticalPaths:
         login_page = LoginPage(driver, base_url)
         login_page.navigate()
         login_page.login("invalid@test.com", "wrongpassword")
-        time.sleep(2)
-        assert not login_page.is_logged_in(), "Invalid login must be prevented"
+        time.sleep(3)
+        # Should remain on login page or explicitly not be logged in
+        is_logged_in = login_page.is_logged_in()
+        assert not is_logged_in, f"Invalid login must be prevented. Current URL: {driver.current_url}"
 
     def test_api_health_check(self, driver, api_base_url):
         """Test API health endpoint responds"""

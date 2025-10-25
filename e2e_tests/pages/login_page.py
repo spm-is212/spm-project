@@ -39,12 +39,12 @@ class LoginPage(BasePage):
         self.click_login_button()
 
     def is_logged_in(self):
-        """Check if login successful by checking URL"""
-        try:
-            self.wait_for_url_to_contain("/")
-            return "login" not in self.get_current_url().lower()
-        except:
-            return False
+        """Check if login successful by checking URL redirect to /taskmanager"""
+        import time
+        time.sleep(2)  # Wait for redirect
+        current_url = self.get_current_url()
+        # After successful login, user is redirected to /taskmanager
+        return "/taskmanager" in current_url or "/team" in current_url or "/calendarview" in current_url
 
     def get_error_message(self):
         """Get error message if login fails"""
@@ -63,3 +63,21 @@ class LoginPage(BasePage):
     def click_forgot_password(self):
         """Click forgot password link"""
         self.click(self.FORGOT_PASSWORD_LINK)
+
+    def logout(self):
+        """Click logout button in sidebar and confirm"""
+        import time
+
+        # Step 1: Click the initial logout button in sidebar
+        LOGOUT_BUTTON = (By.XPATH, "//button[contains(., 'Logout') and contains(@class, 'flex')]")
+        self.click(LOGOUT_BUTTON)
+
+        # Step 2: Wait for confirmation dialog to appear
+        time.sleep(1)
+
+        # Step 3: Click the "Logout" button in the confirmation dialog
+        CONFIRM_LOGOUT = (By.XPATH, "//button[contains(., 'Logout') and contains(@class, 'bg-blue-600')]")
+        self.click(CONFIRM_LOGOUT)
+
+        # Step 4: Wait for logout message and redirect (1.5 seconds + buffer)
+        time.sleep(2)

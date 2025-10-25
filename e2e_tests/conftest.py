@@ -92,3 +92,16 @@ def driver():
     yield driver
 
     driver.quit()
+
+
+@pytest.fixture(scope="function")
+def authenticated_driver(driver, base_url):
+    """Driver with authenticated session"""
+    from e2e_tests.pages.login_page import LoginPage
+    from e2e_tests.test_data.test_users import TEST_USERS
+
+    login_page = LoginPage(driver, base_url)
+    login_page.navigate()
+    login_page.login(TEST_USERS["admin"]["email"], TEST_USERS["admin"]["password"])
+    time.sleep(2)  # Wait for auth to complete
+    yield driver

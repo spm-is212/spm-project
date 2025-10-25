@@ -42,8 +42,8 @@ class TestAuthenticationRegression:
         login_page.navigate()
         login_page.login("invalid@email.com", "wrongpassword")
         time.sleep(2)
-        error = login_page.get_error_message()
-        assert error is not None or not login_page.is_logged_in(), "Should show error or not login"
+        # User should NOT be logged in with invalid credentials
+        assert not login_page.is_logged_in(), "Should not login with invalid credentials"
 
     def test_empty_credentials_prevents_login(self, driver, base_url):
         """Test empty credentials prevents login"""
@@ -60,8 +60,10 @@ class TestAuthenticationRegression:
         login_page = LoginPage(driver, base_url)
         login_page.navigate()
         login_page.login("' OR '1'='1", "' OR '1'='1")
-        time.sleep(2)
-        assert not login_page.is_logged_in(), "SQL injection should be prevented"
+        time.sleep(3)
+        # SQL injection should not allow login
+        is_logged_in = login_page.is_logged_in()
+        assert not is_logged_in, f"SQL injection should be prevented. Current URL: {driver.current_url}"
 
 
 @pytest.mark.regression
@@ -69,20 +71,22 @@ class TestAuthenticationRegression:
 class TestCriticalUserFlows:
     """Critical user flow regression tests"""
 
+    @pytest.mark.skip(reason="TODO: Implement task creation flow")
     def test_complete_task_creation_flow(self, authenticated_driver, base_url):
         """Test complete task creation from login to task created"""
         # This is a placeholder - update based on your actual UI
         driver = authenticated_driver
         time.sleep(2)
         # TODO: Navigate to tasks, create task, verify created
-        assert True, "Implement task creation flow"
+        pytest.fail("Implement task creation flow")
 
+    @pytest.mark.skip(reason="TODO: Implement project creation flow")
     def test_complete_project_creation_flow(self, authenticated_driver, base_url):
         """Test complete project creation flow"""
         driver = authenticated_driver
         time.sleep(2)
         # TODO: Navigate to projects, create project, verify created
-        assert True, "Implement project creation flow"
+        pytest.fail("Implement project creation flow")
 
 
 @pytest.mark.regression
@@ -114,7 +118,7 @@ class TestDataPersistence:
 class TestCrossBrowserCompatibility:
     """Cross-browser compatibility tests"""
 
-    @pytest.mark.skipif("not config.getvalue('firefox')")
+    @pytest.mark.skip(reason="Firefox driver not configured")
     def test_login_firefox(self, driver, base_url):
         """Test login works in Firefox"""
         login_page = LoginPage(driver, base_url)
@@ -174,7 +178,8 @@ class TestPerformance:
         load_time = time.time() - start
         assert load_time < 5, f"Page should load in under 5 seconds, took {load_time}"
 
+    @pytest.mark.skip(reason="TODO: Implement render performance test")
     def test_task_list_renders_efficiently(self, authenticated_driver, base_url):
         """Test task list renders efficiently with many tasks"""
         # TODO: Navigate to task list and measure render time
-        assert True, "Implement render performance test"
+        pytest.fail("Implement render performance test")
