@@ -431,3 +431,86 @@ class TestTaskReader:
         expected_task_ids = {"task-1", "task-3"}
         result_task_ids = {task["id"] for task in result}
         assert result_task_ids == expected_task_ids
+
+    def test_get_archived_subtasks_for_user_returns_archived_subtasks_with_main_tasks(self, mock_crud, mock_user_manager):
+        """Test that get_archived_subtasks_for_user returns archived subtasks with their main tasks"""
+        # Arrange
+        archived_subtask = {
+            "id": "subtask-1",
+            "title": "Archived Subtask",
+            "parent_id": "task-1",
+            "is_archived": True,
+            "assignee_ids": ["user-1"]
+        }
+        main_task = {
+            "id": "task-1",
+            "title": "Main Task",
+            "parent_id": None,
+            "is_archived": False,
+            "assignee_ids": ["user-1"]
+        }
+        tasks = [main_task, archived_subtask]
+
+        mock_crud.select.return_value = tasks
+
+        reader = TaskReader()
+        reader.crud = mock_crud
+        reader.user_manager = mock_user_manager
+
+        # Act
+        result = reader.get_archived_subtasks_for_user(
+            user_id="user-1",
+            user_role="staff",
+            user_departments=["dept1"]
+        )
+
+        # Assert
+        assert len(result) == 1
+        assert result[0]["subtask"]["id"] == "subtask-1"
+        assert result[0]["main_task"]["id"] == "task-1"
+
+    def test_get_archived_subtasks_for_user_caches_main_tasks(self, mock_crud, mock_user_manager):
+        """Test that get_archived_subtasks_for_user caches main tasks efficiently"""
+        # Arrange
+        main_task = {
+            "id": "task-1",
+            "title": "Main Task",
+            "parent_id": None,
+            "is_archived": False,
+            "assignee_ids": ["user-1"]
+        }
+        archived_subtask_1 = {
+            "id": "subtask-1",
+            "title": "Archived Subtask 1",
+            "parent_id": "task-1",
+            "is_archived": True,
+            "assignee_ids": ["user-1"]
+        }
+        archived_subtask_2 = {
+            "id": "subtask-2",
+            "title": "Archived Subtask 2",
+            "parent_id": "task-1",
+            "is_archived": True,
+            "assignee_ids": ["user-1"]
+        }
+        tasks = [main_task, archived_subtask_1, archived_subtask_2]
+
+        mock_crud.select.return_value = tasks
+
+        reader = TaskReader()
+        reader.crud = mock_crud
+        reader.user_manager = mock_user_manager
+
+        # Act
+        result = reader.get_archived_subtasks_for_user(
+            user_id="user-1",
+            user_role="staff",
+            user_departments=["dept1"]
+        )
+
+        # Assert
+        assert len(result) == 2
+        # Both subtasks should reference the same main task
+        assert result[0]["main_task"]["id"] == "task-1"
+        assert result[1]["main_task"]["id"] == "task-1"
+        assert result[0]["main_task"] is result[1]["main_task"]

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, Folder, Users, Building} from 'lucide-react';
+import { AlertCircle, Folder, Building} from 'lucide-react';
 import { apiFetch } from "../../utils/api";
 import { getUserFromToken } from '../../utils/auth';
 import { API_ENDPOINTS } from '../../config/api';
@@ -29,34 +29,24 @@ interface TaskWithProject extends Omit<Task, 'owner_user_id' | 'is_archived'> {
   is_archived?: boolean;
 }
 
-interface Team {
-  id: string;
-  name: string;
-  department_id?: string;
-  member_count?: number;
-}
-
 const CalendarView = () => {
-  const [teams, setTeams] = useState<Team[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<TaskWithProject[]>([]);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask, setSelectedTask] = useState<TaskWithProject | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [userInfo, setUserInfo] = useState<{ email: string; role: string; department?: string; department_id?: string; user_id?: string } | null>(null);
 
   // Filters
-  const [selectedTeam, setSelectedTeam] = useState<string>('');
-  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [teamMembers, setTeamMembers] = useState<UserType[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [filteredPersons, setFilteredPersons] = useState<UserType[]>(teamMembers);
-  const [sortBy, setSortBy] = useState<string>('priority');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [sortBy] = useState<string>('priority');
+  const [sortOrder] = useState<'asc' | 'desc'>('asc');
+  const [startDate] = useState<string>('');
+  const [endDate] = useState<string>('');
 
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -97,28 +87,6 @@ const CalendarView = () => {
   }, []);
 
 
-  // Fetch user's teams
-  const fetchTeams = useCallback(async () => {
-    try {
-      const data = await apiFetch(API_ENDPOINTS.TEAMS.MY_TEAMS);
-
-      // Backend should return team objects with valid UUIDs
-      const teamsData = data.teams || [];
-
-      // Validate that we have proper team objects with UUIDs
-      const validTeams = teamsData.filter((team: Team) =>
-        team && typeof team === 'object' && team.id && team.name
-      );
-
-      setTeams(validTeams);
-      if (validTeams.length > 0 && !selectedTeam) {
-        setSelectedTeam(validTeams[0].id || '');
-      }
-    } catch (err: unknown) {
-      console.error(`Failed to fetch teams: ${err instanceof Error ? err.message : String(err)}`);
-      setError('Failed to load teams');
-    }
-  }, [selectedTeam]);
 
   // Fetch all projects accessible to the user
   const fetchProjects = useCallback(async () => {
@@ -187,7 +155,7 @@ const CalendarView = () => {
 
   // Apply sorting only (no filtering)
   useEffect(() => {
-    let sorted = [...tasks];
+    const sorted = [...tasks];
 
     // Sort tasks (priority, status, title only - no due_date)
     sorted.sort((a, b) => {
@@ -217,11 +185,10 @@ const CalendarView = () => {
   // Load data on mount
   useEffect(() => {
     document.title = "My Teams";
-    fetchTeams();
     fetchTeamMembers();
     fetchTeamTasks();
     fetchProjects();
-  }, [fetchTeams, fetchTeamMembers, fetchTeamTasks, fetchProjects]);
+  }, [fetchTeamMembers, fetchTeamTasks, fetchProjects]);
 
   // Get projects where current user is a collaborator or has tasks assigned
   const getUserCollaboratorProjects = () => {
@@ -320,28 +287,6 @@ const CalendarView = () => {
     setFilteredTasks(tasks);
   };
 
-  // Calculate task statistics
-  const getTaskStats = () => {
-    const total = filteredTasks.length;
-    const completed = filteredTasks.filter(t => t.status === 'COMPLETED').length;
-    const inProgress = filteredTasks.filter(t => t.status === 'IN_PROGRESS').length;
-    const pending = filteredTasks.filter(t => t.status === 'TO_DO').length;
-    const blocked = filteredTasks.filter(t => t.status === 'BLOCKED').length;
-    const overdue = filteredTasks.filter(t => {
-      if (!t.due_date || t.status === 'COMPLETED') return false;
-      const dueDate = new Date(t.due_date);
-      dueDate.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return dueDate < today;
-    }).length;
-
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    return { total, completed, inProgress, pending, blocked, overdue, completionRate };
-  };
-
-  const stats = getTaskStats();
 
 
 

@@ -42,12 +42,10 @@ htmlcov/index.html
 
 
 To open it locally:
-```bash
 macOS:
-
+```bash
 open htmlcov/index.html
 ```
-```bash
 Windows:
-
+```bash
 start htmlcov/index.html```

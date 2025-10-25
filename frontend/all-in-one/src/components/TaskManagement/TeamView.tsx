@@ -129,7 +129,7 @@ const TeamView = () => {
 
   // Apply sorting only (no filtering)
   useEffect(() => {
-    let sorted = [...tasks];
+    const sorted = [...tasks];
 
     // Sort tasks (priority, status, title only - no due_date)
     sorted.sort((a, b) => {
@@ -307,26 +307,26 @@ const TeamView = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <div className="mb-8">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
+      <div className="mb-6 md:mb-8">
 
         {userInfo && (
           <div className="mt-4 p-4 bg-white border rounded-lg shadow-sm">
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <div className="flex items-center space-x-2">
-                <Building className="w-5 h-5 text-blue-600" />
-                <span className="text-gray-700">
+                <Building className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                <span className="text-sm sm:text-base text-gray-700">
                   <strong>Department:</strong> {userInfo.department || 'N/A'}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <Folder className="w-5 h-5 text-green-600" />
-                <span className="text-gray-700">
+                <Folder className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                <span className="text-sm sm:text-base text-gray-700">
                   <strong>My Projects:</strong> {getUserCollaboratorProjects().length} {getUserCollaboratorProjects().length === 1 ? 'Project' : 'Projects'}
                 </span>
               </div>
-              <span className="text-gray-700">
-                <strong>Role:</strong> <span className="uppercase text-sm font-semibold">{userInfo.role}</span>
+              <span className="text-sm sm:text-base text-gray-700">
+                <strong>Role:</strong> <span className="uppercase text-xs sm:text-sm font-semibold">{userInfo.role}</span>
               </span>
             </div>
           </div>
@@ -335,12 +335,12 @@ const TeamView = () => {
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg flex items-center">
-          <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
-          <span className="text-red-700">{error}</span>
+        <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-100 border border-red-300 rounded-lg flex items-center">
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mr-2" />
+          <span className="text-sm sm:text-base text-red-700">{error}</span>
           <button
             onClick={() => setError('')}
-            className="ml-auto text-red-600 hover:text-red-800"
+            className="ml-auto text-red-600 hover:text-red-800 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             ×
           </button>
@@ -348,47 +348,47 @@ const TeamView = () => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg shadow-sm border border-gray-200">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 md:gap-4 mb-4 md:mb-6">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 md:p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-1">
-            <Folder className="w-5 h-5 text-gray-500" />
+            <Folder className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.total}</div>
           <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Tasks</div>
         </div>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg shadow-sm border border-green-200">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 md:p-4 rounded-lg shadow-sm border border-green-200">
           <div className="flex items-center justify-between mb-1">
-            <CheckCircle className="w-5 h-5 text-green-600" />
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
           </div>
-          <div className="text-3xl font-bold text-green-700">{stats.completed}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-green-700">{stats.completed}</div>
           <div className="text-xs font-medium text-green-700 uppercase tracking-wide">Completed</div>
         </div>
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg shadow-sm border border-blue-200">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 md:p-4 rounded-lg shadow-sm border border-blue-200">
           <div className="flex items-center justify-between mb-1">
-            <Clock className="w-5 h-5 text-blue-600" />
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
           </div>
-          <div className="text-3xl font-bold text-blue-700">{stats.inProgress}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-blue-700">{stats.inProgress}</div>
           <div className="text-xs font-medium text-blue-700 uppercase tracking-wide">In Progress</div>
         </div>
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg shadow-sm border border-yellow-200">
+        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-3 md:p-4 rounded-lg shadow-sm border border-yellow-200">
           <div className="flex items-center justify-between mb-1">
-            <Clock className="w-5 h-5 text-yellow-600" />
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
           </div>
-          <div className="text-3xl font-bold text-yellow-700">{stats.pending}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-yellow-700">{stats.pending}</div>
           <div className="text-xs font-medium text-yellow-700 uppercase tracking-wide">To Do</div>
         </div>
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg shadow-sm border border-orange-200">
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-3 md:p-4 rounded-lg shadow-sm border border-orange-200">
           <div className="flex items-center justify-between mb-1">
-            <XCircle className="w-5 h-5 text-orange-600" />
+            <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
           </div>
-          <div className="text-3xl font-bold text-orange-700">{stats.blocked}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-orange-700">{stats.blocked}</div>
           <div className="text-xs font-medium text-orange-700 uppercase tracking-wide">Blocked</div>
         </div>
-        <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg shadow-sm border border-red-200">
+        <div className="bg-gradient-to-br from-red-50 to-red-100 p-3 md:p-4 rounded-lg shadow-sm border border-red-200">
           <div className="flex items-center justify-between mb-1">
-            <AlertCircle className="w-5 h-5 text-red-600" />
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
           </div>
-          <div className="text-3xl font-bold text-red-700">{stats.overdue}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-red-700">{stats.overdue}</div>
           <div className="text-xs font-medium text-red-700 uppercase tracking-wide">Overdue</div>
         </div>
       </div>
