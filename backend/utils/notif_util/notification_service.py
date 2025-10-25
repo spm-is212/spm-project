@@ -26,10 +26,27 @@ class NotificationService:
         send_email(receiver_email, subject, body)
 
     def notify_task_event(self, sender_id, action, task, receivers, email_receivers=None):
+        """Send in-app and email notifications when a task event occurs."""
+        timestamp = datetime.utcnow().isoformat()
+        task_title = task.get("title", "Untitled Task")
+        due_date = task.get("due_date", "No due date")
+
+        # --- In-app notifications ---
         for receiver_id in receivers:
             self.create_in_app_notification(sender_id, receiver_id, action, task)
+
+        # --- Email notifications ---
         if email_receivers:
             for email in email_receivers:
-                subject = f"Task '{task['title']}' {action}"
-                body = f"The task '{task['title']}' was {action}.\nDue: {task.get('due_date')}"
-                self.send_email_notification(email, subject, body)
+                subject = f"Task '{task_title}' {action}"
+                body = (
+                    f"Hi,\n\n"
+                    f"The task **'{task_title}'** was {action} by user {sender_id}.\n"
+                    f"Due: {due_date}\n"
+                    f"Timestamp: {timestamp}\n\n"
+                    f"View this task in your workspace for more details."
+                )
+                try:
+                    self.send_email_notification(email, subject, body)
+                except Exception as e:
+                    print(f"[NotificationService] Failed to send email to {email}: {e}")
