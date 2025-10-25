@@ -2,7 +2,7 @@
 Tests for SupabaseCRUD wrapper
 """
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from backend.wrappers.supabase_wrapper.supabase_crud import SupabaseCRUD
 
 
