@@ -211,7 +211,7 @@ class TaskCompletionReportGenerator:
 
         # Data rows
         for row_num, task in enumerate(tasks, start=7):
-            ws.cell(row=row_num, column=1, value=task.title)  # CHANGED: Use task.title
+            ws.cell(row=row_num, column=1, value=task.task_title)
             ws.cell(row=row_num, column=2, value=task.priority).alignment = center_alignment
             ws.cell(row=row_num, column=3, value=task.status)
             ws.cell(row=row_num, column=4, value=task.due_date)
@@ -266,7 +266,7 @@ class TaskCompletionReportGenerator:
         table_data = [["Task Title", "Priority", "Status", "Due Date", "Overdue"]]
         for task in tasks:
             table_data.append([
-                task.title[:40],  # CHANGED: Use task.title - Truncate long titles
+                task.task_title[:40],
                 str(task.priority),
                 task.status,
                 task.due_date,
