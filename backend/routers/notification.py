@@ -20,3 +20,10 @@ def get_notifications(
         return {"notifications": notifications[:limit]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch notifications: {e}")
+
+@router.delete("/clear")
+def clear_notifications(user: dict = Depends(get_current_user)):
+    user_id = user["sub"]
+    crud = SupabaseCRUD()
+    crud.delete("notifications", filters={"receiver_id": user_id})
+    return {"message": "All notifications deleted"}
