@@ -92,14 +92,42 @@ class TaskCompletionReportGenerator:
     ) -> List[Dict[str, Any]]:
         """Get all tasks assigned to a specific staff member within date range"""
         all_tasks = self.crud.select("tasks")
+        
+        print(f"DEBUG: Looking for tasks for user_id: {user_id}")
+        print(f"DEBUG: Total tasks in database: {len(all_tasks)}")
 
-        # Filter tasks where user is in assignee_ids
-        assigned_tasks = [
-            task for task in all_tasks
-            if user_id in task.get("assignee_ids", [])
-        ]
-
-        return self._filter_by_date_range(assigned_tasks, start_date, end_date)
+        # Filter tasks where user is in assignee_ids OR is the owner
+        assigned_tasks = []
+        for task in all_tasks:
+            assignee_ids = task.get("assignee_ids", [])
+            owner_user_id = task.get("owner_user_id")
+            
+            # Debug: Print first few tasks to see structure
+            if len(assigned_tasks) < 3:
+                print(f"DEBUG: Task '{task.get('title', 'Untitled')}' - assignee_ids: {assignee_ids}, owner: {owner_user_id}")
+            
+            # Handle different formats of assignee_ids
+            is_assigned = False
+            if assignee_ids:
+                # Check if it's a list
+                if isinstance(assignee_ids, list):
+                    is_assigned = user_id in assignee_ids
+                # Check if it's a string (PostgreSQL array format like "{uuid1,uuid2}")
+                elif isinstance(assignee_ids, str):
+                    is_assigned = user_id in assignee_ids
+            
+            # Also include tasks where user is the owner
+            is_owner = owner_user_id == user_id
+            
+            if is_assigned or is_owner:
+                assigned_tasks.append(task)
+        
+        print(f"DEBUG: Found {len(assigned_tasks)} tasks assigned to user")
+        
+        filtered_tasks = self._filter_by_date_range(assigned_tasks, start_date, end_date)
+        print(f"DEBUG: After date filtering: {len(filtered_tasks)} tasks")
+        
+        return filtered_tasks
 
     def _filter_by_date_range(
         self,
@@ -111,9 +139,13 @@ class TaskCompletionReportGenerator:
         filtered_tasks = []
         for task in tasks:
             if task.get("due_date"):
-                task_due_date = datetime.fromisoformat(task["due_date"]).date()
-                if start_date <= task_due_date <= end_date:
-                    filtered_tasks.append(task)
+                try:
+                    task_due_date = datetime.fromisoformat(task["due_date"]).date()
+                    if start_date <= task_due_date <= end_date:
+                        filtered_tasks.append(task)
+                except (ValueError, TypeError) as e:
+                    print(f"DEBUG: Error parsing due_date for task {task.get('id')}: {e}")
+                    continue
         return filtered_tasks
 
     def _convert_to_task_item(self, task: Dict[str, Any]) -> TaskCompletionItem:
@@ -124,12 +156,15 @@ class TaskCompletionReportGenerator:
         # Calculate overdue: task is overdue if due_date is past and status is not COMPLETED
         is_overdue = False
         if due_date_str:
-            task_due_date = datetime.fromisoformat(due_date_str).date()
-            is_overdue = task_due_date < date.today() and status != "COMPLETED"
+            try:
+                task_due_date = datetime.fromisoformat(due_date_str).date()
+                is_overdue = task_due_date < date.today() and status != "COMPLETED"
+            except (ValueError, TypeError):
+                pass
 
         return TaskCompletionItem(
-            task_title=task.get("title", "Untitled"),
-            priority=task.get("priority", 5),
+            task_title=task.get("title", "Untitled"),  # FIXED: Use "task_title" to match schema
+            priority=task.get("priority", "MEDIUM"),
             status=status,
             due_date=due_date_str,
             overdue=is_overdue
@@ -176,7 +211,7 @@ class TaskCompletionReportGenerator:
 
         # Data rows
         for row_num, task in enumerate(tasks, start=7):
-            ws.cell(row=row_num, column=1, value=task.task_title)
+            ws.cell(row=row_num, column=1, value=task.title)  # CHANGED: Use task.title
             ws.cell(row=row_num, column=2, value=task.priority).alignment = center_alignment
             ws.cell(row=row_num, column=3, value=task.status)
             ws.cell(row=row_num, column=4, value=task.due_date)
@@ -231,7 +266,7 @@ class TaskCompletionReportGenerator:
         table_data = [["Task Title", "Priority", "Status", "Due Date", "Overdue"]]
         for task in tasks:
             table_data.append([
-                task.task_title[:40],  # Truncate long titles
+                task.title[:40],  # CHANGED: Use task.title - Truncate long titles
                 str(task.priority),
                 task.status,
                 task.due_date,

@@ -48,8 +48,8 @@ class LoggedTimeReportGenerator:
         else:  # project
             time_entries = self._get_entries_by_project(scope_id, start_date, end_date)
 
-        # Calculate total hours
-        total_hours = sum(entry.time_log for entry in time_entries)
+        # Calculate total hours - FIXED: Handle None values
+        total_hours = sum(entry.time_log if entry.time_log is not None else 0.0 for entry in time_entries)
 
         return LoggedTimeResponse(
             scope_type=scope_type,
@@ -156,7 +156,16 @@ class LoggedTimeReportGenerator:
         """Create a LoggedTimeItem from task data"""
         due_date_str = task.get("due_date", "")
         status = task.get("status", "TO_DO")
-        time_log = float(task.get("time_log", 0.0))
+        
+        # FIXED: Handle None/null time_log values
+        time_log_value = task.get("time_log")
+        if time_log_value is None:
+            time_log = 0.0
+        else:
+            try:
+                time_log = float(time_log_value)
+            except (ValueError, TypeError):
+                time_log = 0.0
 
         # Calculate overdue
         is_overdue = False

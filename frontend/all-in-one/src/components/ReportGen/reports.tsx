@@ -86,7 +86,7 @@ interface ReportData {
   staff_summaries?: StaffSummary[];
   time_entries?: TimeEntry[];
   total_hours?: number;
-  [key: string]: unknown; // Allow additional properties
+  [key: string]: unknown;
 }
 
 type ReportDataType = ReportData | null;
@@ -109,114 +109,79 @@ const Reports = () => {
     async function fetchLists() {
       setIsLoadingLists(true);
       try {
-        // Fetch projects using the correct endpoint
+        // Fetch projects
         try {
-          console.log("Fetching projects from /api/projects/list...");
           const projectsResponse = await fetch(`${API_BASE_URL}/api/projects/list`, {
             credentials: "include",
             headers: getAuthHeaders()
           });
-          console.log("Projects response status:", projectsResponse.status);
-          console.log("Projects response headers:", projectsResponse.headers.get("content-type"));
-          
-          const projectsText = await projectsResponse.text();
-          console.log("Projects raw response:", projectsText.substring(0, 200));
           
           if (projectsResponse.ok) {
-            try {
-              const projectsData = JSON.parse(projectsText);
-              console.log("Projects data parsed:", projectsData);
-              
-              const projects = Array.isArray(projectsData) ? projectsData : [];
-              
-              setProjectList(projects.map((p: any) => ({
-                id: p.id,
-                name: p.name || 'Unnamed Project'
-              })));
-            } catch (parseError) {
-              console.error("Failed to parse projects JSON:", parseError);
-            }
-          } else {
-            console.error("Failed to fetch projects. Status:", projectsResponse.status, "Response:", projectsText.substring(0, 500));
+            const projectsData = await projectsResponse.json();
+            const projects = Array.isArray(projectsData) ? projectsData : [];
+            setProjectList(projects.map((p: any) => ({
+              id: p.id,
+              name: p.name || 'Unnamed Project'
+            })));
           }
         } catch (error) {
           console.error("Error fetching projects:", error);
         }
 
-        // Fetch staff using the correct endpoint
+        // Fetch staff
         try {
-          console.log("Fetching staff from /api/auth/users...");
           const staffResponse = await fetch(`${API_BASE_URL}/api/auth/users`, {
             credentials: "include",
             headers: getAuthHeaders()
           });
-          console.log("Staff response status:", staffResponse.status);
-          console.log("Staff response headers:", staffResponse.headers.get("content-type"));
-          
-          const staffText = await staffResponse.text();
-          console.log("Staff raw response:", staffText.substring(0, 200));
           
           if (staffResponse.ok) {
-            try {
-              const staffData = JSON.parse(staffText);
-              console.log("Staff data parsed:", staffData);
-              
-              const staff = staffData.users || [];
-              
-              setStaffList(staff.map((s: any) => ({
-                id: s.uuid,
-                email: s.email || 'Unknown User'
-              })));
-            } catch (parseError) {
-              console.error("Failed to parse staff JSON:", parseError);
-            }
-          } else {
-            console.error("Failed to fetch staff. Status:", staffResponse.status, "Response:", staffText.substring(0, 500));
+            const staffData = await staffResponse.json();
+            const staff = staffData.users || [];
+            
+            console.log("Staff data sample:", staff.slice(0, 2));
+            
+            setStaffList(staff.map((s: any) => ({
+              id: s.uuid,
+              email: s.email || 'Unknown User'
+            })));
+            
+            console.log("Processed staffList sample:", staff.slice(0, 2).map((s: any) => ({
+              id: s.uuid,
+              email: s.email
+            })));
           }
         } catch (error) {
           console.error("Error fetching staff:", error);
         }
 
-        // Fetch departments - need to get unique departments from users
+        // Fetch departments
         try {
-          console.log("Fetching users for departments from /api/auth/users...");
           const staffResponse = await fetch(`${API_BASE_URL}/api/auth/users`, {
             credentials: "include",
             headers: getAuthHeaders()
           });
           
           if (staffResponse.ok) {
-            try {
-              const staffText = await staffResponse.text();
-              const staffData = JSON.parse(staffText);
-              console.log("Extracting departments from users:", staffData);
-              
-              const staff = staffData.users || [];
-              
-              // Extract unique departments from all users
-              const departmentSet = new Set<string>();
-              staff.forEach((user: any) => {
-                const userDepts = user.departments || [];
-                userDepts.forEach((dept: string) => {
-                  if (dept && dept.trim()) {
-                    departmentSet.add(dept.trim());
-                  }
-                });
+            const staffData = await staffResponse.json();
+            const staff = staffData.users || [];
+            
+            const departmentSet = new Set<string>();
+            staff.forEach((user: any) => {
+              const userDepts = user.departments || [];
+              userDepts.forEach((dept: string) => {
+                if (dept && dept.trim()) {
+                  departmentSet.add(dept.trim());
+                }
               });
-              
-              // Convert to array of objects
-              const departments = Array.from(departmentSet).map(dept => ({
-                id: dept,
-                name: dept
-              }));
-              
-              console.log("Extracted departments:", departments);
-              setDepartmentList(departments);
-            } catch (parseError) {
-              console.error("Failed to parse users for departments:", parseError);
-            }
-          } else {
-            console.error("Failed to fetch users for departments. Status:", staffResponse.status);
+            });
+            
+            const departments = Array.from(departmentSet).map(dept => ({
+              id: dept,
+              name: dept
+            }));
+            
+            setDepartmentList(departments);
           }
         } catch (error) {
           console.error("Error fetching departments:", error);
@@ -234,7 +199,6 @@ const Reports = () => {
     e: ChangeEvent<HTMLSelectElement | HTMLInputElement>
   ) => {
     setFilters((prev) => ({ ...prev, [field]: e.target.value }));
-    // Clear scopeId if scopeType changes
     if (field === "scope_type") {
       setFilters((prev) => ({ ...prev, scope_id: "" }));
     }
@@ -270,7 +234,6 @@ const Reports = () => {
       return false;
     }
 
-    // Validate scope fields
     if (!filters.scope_type) {
       alert("Please select a scope type.");
       return false;
@@ -281,7 +244,6 @@ const Reports = () => {
       return false;
     }
 
-    // Validate dates
     if (!filters.start_date || !filters.end_date) {
       alert("Please select both start and end dates.");
       return false;
@@ -292,7 +254,6 @@ const Reports = () => {
       return false;
     }
 
-    // Validate time_frame for Team Summary
     if (selectedReport === "Weekly/Monthly Team Summary" && !filters.time_frame) {
       alert("Please select a time frame (weekly or monthly).");
       return false;
@@ -318,6 +279,14 @@ const Reports = () => {
 
     setIsLoading(true);
     try {
+      console.log("Filters sent:", {
+        scope_type: filters.scope_type,
+        scope_id: filters.scope_id,
+        start_date: filters.start_date,
+        end_date: filters.end_date,
+        time_frame: filters.time_frame
+      });
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         credentials: "include",
@@ -340,11 +309,14 @@ const Reports = () => {
       console.log("Report data received:", data);
       console.log("Report type:", selectedReport);
       
-      // Log specific fields based on report type
       if (selectedReport === "Task Completion Report") {
         console.log("Tasks array:", data.tasks);
+        console.log("Total tasks:", data.total_tasks);
+        console.log("Scope name:", data.scope_name);
         if (data.tasks && data.tasks.length > 0) {
           console.log("First task structure:", data.tasks[0]);
+        } else {
+          console.log("WARNING: No tasks returned! Check backend logs for DEBUG output.");
         }
       } else if (selectedReport === "Weekly/Monthly Team Summary") {
         console.log("Staff summaries:", data.staff_summaries);
@@ -409,7 +381,6 @@ const Reports = () => {
       const link = document.createElement("a");
       link.href = url;
       
-      // Generate filename
       const reportType = selectedReport.toLowerCase().replace(/ /g, "_");
       const extension = exportFormat === "xlsx" ? ".xlsx" : ".pdf";
       link.download = `${reportType}_${filters.scope_type}_${filters.start_date}${extension}`;
@@ -428,7 +399,6 @@ const Reports = () => {
     }
   };
 
-  // Conditional Filters based on selected report
   const renderDynamicFields = () => {
     if (!selectedReport) return null;
 
@@ -457,9 +427,9 @@ const Reports = () => {
                     onChange={handleChange("scope_id")} 
                     className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select {scopeLabel}</option>
+                    <option value="" key="empty-option">Select {scopeLabel}</option>
                     {scopeOptions.length === 0 && (
-                      <option value="" disabled>No options available</option>
+                      <option value="" disabled key="no-options">No options available</option>
                     )}
                     {scopeOptions.map((opt) => (
                       <option key={opt.id} value={opt.id}>
@@ -522,7 +492,7 @@ const Reports = () => {
                     onChange={handleChange("scope_id")} 
                     className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select</option>
+                    <option value="" key="empty">Select</option>
                     {scopeOptions.map((opt) => (
                       <option key={opt.id} value={opt.id}>
                         {opt.name}
@@ -593,7 +563,7 @@ const Reports = () => {
                     onChange={handleChange("scope_id")} 
                     className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select</option>
+                    <option value="" key="empty">Select</option>
                     {scopeOptions.map((opt) => (
                       <option key={opt.id} value={opt.id}>
                         {opt.name}
@@ -644,13 +614,7 @@ const Reports = () => {
       {!isLoadingLists && (
         <div className="mb-4 p-3 bg-gray-50 text-gray-600 rounded text-sm">
           <div>Loaded: {projectList.length} projects, {staffList.length} staff, {departmentList.length} departments</div>
-          {(projectList.length === 0 || staffList.length === 0 || departmentList.length === 0) && (
-            <div className="mt-2 text-red-600">
-              ⚠️ Some lists are empty. Open browser console (F12) to see fetch errors.
-            </div>
-          )}
           
-          {/* Debug section - Remove this after fixing */}
           <details className="mt-2">
             <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Show Debug Data</summary>
             <div className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-48">
@@ -705,7 +669,6 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Render dynamic fields */}
       {selectedReport && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-lg font-semibold text-gray-700 mb-4">Report Filters</h3>
@@ -713,7 +676,6 @@ const Reports = () => {
         </div>
       )}
 
-      {/* View and Export Buttons */}
       {selectedReport && (
         <div className="flex items-center gap-4 flex-wrap">
           <button
@@ -754,7 +716,6 @@ const Reports = () => {
         </div>
       )}
 
-      {/* Report Preview */}
       {reportData && (
         <div className="mt-6 bg-white border rounded-lg overflow-hidden">
           <div className="bg-gray-100 px-6 py-4 border-b">
@@ -768,7 +729,6 @@ const Reports = () => {
               </p>
             )}
             
-            {/* Debug Toggle */}
             <details className="mt-2">
               <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800">Show Raw Data (Debug)</summary>
               <div className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-48">
@@ -929,7 +889,6 @@ const Reports = () => {
               </div>
             )}
             
-            {/* Show error message if expected data structure is missing */}
             {selectedReport === "Task Completion Report" && !reportData.tasks && (
               <div className="text-center py-8 text-red-500">
                 <p>Error: Report data structure is invalid. Expected 'tasks' array.</p>
