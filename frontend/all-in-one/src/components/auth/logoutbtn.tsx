@@ -9,7 +9,7 @@ interface LogoutButtonProps {
   redirectTo?: string;
 }
 
-const logoutbtn: React.FC<LogoutButtonProps> = ({
+const LogoutBtn: React.FC<LogoutButtonProps> = ({
   onLogout,
   className = '',
   showConfirm = false,
@@ -139,4 +139,4 @@ const logoutbtn: React.FC<LogoutButtonProps> = ({
   );
 };
 
-export default logoutbtn;
+export default LogoutBtn;

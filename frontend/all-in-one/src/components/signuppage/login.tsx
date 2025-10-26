@@ -85,8 +85,8 @@ const LoginPage = () => {
       }
 
       navigate('/taskmanager', { replace: true });
-    } catch (err: any) {
-      setErrors({ general: err.message });
+    } catch (err: unknown) {
+      setErrors({ general: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsSubmitting(false);
     }
