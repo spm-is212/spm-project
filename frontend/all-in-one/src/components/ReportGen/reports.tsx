@@ -245,7 +245,15 @@ const Reports = () => {
     }
 
     if (!filters.start_date || !filters.end_date) {
-      alert("Please select both start and end dates.");
+      if (selectedReport === "Weekly/Monthly Team Summary") {
+        alert(filters.time_frame === "weekly"
+          ? "Please select a week."
+          : filters.time_frame === "monthly"
+          ? "Please select a month."
+          : "Please select both start and end dates.");
+      } else {
+        alert("Please select both start and end dates.");
+      }
       return false;
     }
 
@@ -507,7 +515,14 @@ const Reports = () => {
                 <label className="font-medium mb-1">Time Frame <span className="text-red-500">*</span></label>
                 <select
                   value={filters.time_frame ?? ""}
-                  onChange={handleChange("time_frame")}
+                  onChange={(e) => {
+                    setFilters((prev) => ({
+                      ...prev,
+                      time_frame: e.target.value,
+                      start_date: "",
+                      end_date: ""
+                    }));
+                  }}
                   className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
@@ -516,26 +531,83 @@ const Reports = () => {
                 </select>
               </div>
             </div>
-            <div className="flex gap-4 mb-4">
-              <div className="flex flex-col flex-1">
-                <label className="font-medium mb-1">Start Date <span className="text-red-500">*</span></label>
-                <input
-                  type="date"
-                  value={filters.start_date ?? ""}
-                  onChange={handleChange("start_date")}
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+
+            {filters.time_frame === "weekly" && (
+              <div className="flex gap-4 mb-4">
+                <div className="flex flex-col flex-1">
+                  <label className="font-medium mb-1">Select Week <span className="text-red-500">*</span></label>
+                  <input
+                    type="week"
+                    onChange={(e) => {
+                      const weekValue = e.target.value; // Format: "2025-W43"
+                      if (weekValue) {
+                        const [year, week] = weekValue.split('-W');
+                        const firstDayOfYear = new Date(parseInt(year), 0, 1);
+                        const daysOffset = (parseInt(week) - 1) * 7;
+                        const firstDayOfWeek = new Date(firstDayOfYear.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+
+                        // Adjust to Monday (ISO week starts on Monday)
+                        const dayOfWeek = firstDayOfWeek.getDay();
+                        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                        const monday = new Date(firstDayOfWeek.getTime() + mondayOffset * 24 * 60 * 60 * 1000);
+
+                        // Calculate Sunday (6 days after Monday)
+                        const sunday = new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+                        const startDate = monday.toISOString().split('T')[0];
+                        const endDate = sunday.toISOString().split('T')[0];
+
+                        setFilters((prev) => ({
+                          ...prev,
+                          start_date: startDate,
+                          end_date: endDate
+                        }));
+                      }
+                    }}
+                    className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {filters.start_date && filters.end_date && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      Selected: {filters.start_date} to {filters.end_date}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col flex-1">
-                <label className="font-medium mb-1">End Date <span className="text-red-500">*</span></label>
-                <input
-                  type="date"
-                  value={filters.end_date ?? ""}
-                  onChange={handleChange("end_date")}
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            )}
+
+            {filters.time_frame === "monthly" && (
+              <div className="flex gap-4 mb-4">
+                <div className="flex flex-col flex-1">
+                  <label className="font-medium mb-1">Select Month <span className="text-red-500">*</span></label>
+                  <input
+                    type="month"
+                    onChange={(e) => {
+                      const monthValue = e.target.value; // Format: "2025-10"
+                      if (monthValue) {
+                        const [year, month] = monthValue.split('-');
+                        const firstDay = new Date(parseInt(year), parseInt(month) - 1, 1);
+                        const lastDay = new Date(parseInt(year), parseInt(month), 0);
+
+                        const startDate = firstDay.toISOString().split('T')[0];
+                        const endDate = lastDay.toISOString().split('T')[0];
+
+                        setFilters((prev) => ({
+                          ...prev,
+                          start_date: startDate,
+                          end_date: endDate
+                        }));
+                      }
+                    }}
+                    className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {filters.start_date && filters.end_date && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      Selected: {filters.start_date} to {filters.end_date}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </>
         );
 
