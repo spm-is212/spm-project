@@ -92,9 +92,19 @@ const NotificationBell: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
+  try {
+    await apiFetch('notifications/clear', { method: 'DELETE' });
+
+    // locally clear list to reflect immediately
     setNotifications([]);
-  };
+
+    console.log('All notifications cleared successfully');
+  } catch (err) {
+    console.error('Failed to clear notifications:', err);
+    setError('Failed to clear notifications');
+  }
+};
 
   return (
     <div className="relative" ref={dropdownRef}>
