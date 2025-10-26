@@ -42,7 +42,7 @@ class TestAuthenticationFlow:
         error = login_page.get_error_message()
         if error:
             assert len(error) > 0, "Error message should not be empty"
-        
+
     def test_logout_clears_session(self, driver, base_url):
         """Test logout functionality with confirmation dialog"""
         # Arrange

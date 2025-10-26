@@ -30,11 +30,9 @@ export const API_ENDPOINTS = {
     UPDATE: 'tasks/updateTask',
     FILTER_BY_DUE_DATE: 'tasks/filterByDueDate',
   },
-  
+
   NOTIFICATIONS: {
     LIST: 'notifications/',
   },
 
 } as const;
-
-

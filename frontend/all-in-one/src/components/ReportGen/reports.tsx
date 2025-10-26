@@ -6,8 +6,8 @@ const API_BASE_URL = 'http://127.0.0.1:8000';
 // Helper function to get auth token
 const getAuthToken = () => {
   // Check common storage locations for the token
-  return sessionStorage.getItem('access_token') || 
-         localStorage.getItem('access_token') || 
+  return sessionStorage.getItem('access_token') ||
+         localStorage.getItem('access_token') ||
          localStorage.getItem('token') ||
          sessionStorage.getItem('token');
 };
@@ -18,11 +18,11 @@ const getAuthHeaders = () => {
   const headers: HeadersInit = {
     "Content-Type": "application/json"
   };
-  
+
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  
+
   return headers;
 };
 
@@ -115,7 +115,7 @@ const Reports = () => {
             credentials: "include",
             headers: getAuthHeaders()
           });
-          
+
           if (projectsResponse.ok) {
             const projectsData = await projectsResponse.json();
             const projects = Array.isArray(projectsData) ? projectsData : [];
@@ -134,18 +134,18 @@ const Reports = () => {
             credentials: "include",
             headers: getAuthHeaders()
           });
-          
+
           if (staffResponse.ok) {
             const staffData = await staffResponse.json();
             const staff = staffData.users || [];
-            
+
             console.log("Staff data sample:", staff.slice(0, 2));
-            
+
             setStaffList(staff.map((s: any) => ({
               id: s.uuid,
               email: s.email || 'Unknown User'
             })));
-            
+
             console.log("Processed staffList sample:", staff.slice(0, 2).map((s: any) => ({
               id: s.uuid,
               email: s.email
@@ -161,11 +161,11 @@ const Reports = () => {
             credentials: "include",
             headers: getAuthHeaders()
           });
-          
+
           if (staffResponse.ok) {
             const staffData = await staffResponse.json();
             const staff = staffData.users || [];
-            
+
             const departmentSet = new Set<string>();
             staff.forEach((user: any) => {
               const userDepts = user.departments || [];
@@ -175,12 +175,12 @@ const Reports = () => {
                 }
               });
             });
-            
+
             const departments = Array.from(departmentSet).map(dept => ({
               id: dept,
               name: dept
             }));
-            
+
             setDepartmentList(departments);
           }
         } catch (error) {
@@ -308,7 +308,7 @@ const Reports = () => {
       const data = await response.json();
       console.log("Report data received:", data);
       console.log("Report type:", selectedReport);
-      
+
       if (selectedReport === "Task Completion Report") {
         console.log("Tasks array:", data.tasks);
         console.log("Total tasks:", data.total_tasks);
@@ -330,7 +330,7 @@ const Reports = () => {
           console.log("First time entry structure:", data.time_entries[0]);
         }
       }
-      
+
       setReportData(data);
     } catch (error) {
       console.error("Error generating report:", error);
@@ -380,11 +380,11 @@ const Reports = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      
+
       const reportType = selectedReport.toLowerCase().replace(/ /g, "_");
       const extension = exportFormat === "xlsx" ? ".xlsx" : ".pdf";
       link.download = `${reportType}_${filters.scope_type}_${filters.start_date}${extension}`;
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -409,9 +409,9 @@ const Reports = () => {
             <div className="flex flex-wrap gap-4 mb-4">
               <div className="flex flex-col flex-1 min-w-[200px]">
                 <label className="font-medium mb-1">Scope Type <span className="text-red-500">*</span></label>
-                <select 
-                  value={filters.scope_type ?? ""} 
-                  onChange={handleChange("scope_type")} 
+                <select
+                  value={filters.scope_type ?? ""}
+                  onChange={handleChange("scope_type")}
                   className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
@@ -422,9 +422,9 @@ const Reports = () => {
               {filters.scope_type && (
                 <div className="flex flex-col flex-1 min-w-[200px]">
                   <label className="font-medium mb-1">{scopeLabel} <span className="text-red-500">*</span></label>
-                  <select 
-                    value={filters.scope_id ?? ""} 
-                    onChange={handleChange("scope_id")} 
+                  <select
+                    value={filters.scope_id ?? ""}
+                    onChange={handleChange("scope_id")}
                     className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="" key="empty-option">Select {scopeLabel}</option>
@@ -448,20 +448,20 @@ const Reports = () => {
             <div className="flex gap-4 mb-4">
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">Start Date <span className="text-red-500">*</span></label>
-                <input 
-                  type="date" 
-                  value={filters.start_date ?? ""} 
-                  onChange={handleChange("start_date")} 
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="date"
+                  value={filters.start_date ?? ""}
+                  onChange={handleChange("start_date")}
+                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">End Date <span className="text-red-500">*</span></label>
-                <input 
-                  type="date" 
-                  value={filters.end_date ?? ""} 
-                  onChange={handleChange("end_date")} 
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="date"
+                  value={filters.end_date ?? ""}
+                  onChange={handleChange("end_date")}
+                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -474,9 +474,9 @@ const Reports = () => {
             <div className="flex flex-wrap gap-4 mb-4">
               <div className="flex flex-col flex-1 min-w-[200px]">
                 <label className="font-medium mb-1">Scope Type <span className="text-red-500">*</span></label>
-                <select 
-                  value={filters.scope_type ?? ""} 
-                  onChange={handleChange("scope_type")} 
+                <select
+                  value={filters.scope_type ?? ""}
+                  onChange={handleChange("scope_type")}
                   className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
@@ -487,9 +487,9 @@ const Reports = () => {
               {filters.scope_type && (
                 <div className="flex flex-col flex-1 min-w-[200px]">
                   <label className="font-medium mb-1">{scopeLabel} <span className="text-red-500">*</span></label>
-                  <select 
-                    value={filters.scope_id ?? ""} 
-                    onChange={handleChange("scope_id")} 
+                  <select
+                    value={filters.scope_id ?? ""}
+                    onChange={handleChange("scope_id")}
                     className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="" key="empty">Select</option>
@@ -505,9 +505,9 @@ const Reports = () => {
             <div className="flex gap-4 mb-4">
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">Time Frame <span className="text-red-500">*</span></label>
-                <select 
-                  value={filters.time_frame ?? ""} 
-                  onChange={handleChange("time_frame")} 
+                <select
+                  value={filters.time_frame ?? ""}
+                  onChange={handleChange("time_frame")}
                   className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
@@ -519,20 +519,20 @@ const Reports = () => {
             <div className="flex gap-4 mb-4">
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">Start Date <span className="text-red-500">*</span></label>
-                <input 
-                  type="date" 
-                  value={filters.start_date ?? ""} 
-                  onChange={handleChange("start_date")} 
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="date"
+                  value={filters.start_date ?? ""}
+                  onChange={handleChange("start_date")}
+                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">End Date <span className="text-red-500">*</span></label>
-                <input 
-                  type="date" 
-                  value={filters.end_date ?? ""} 
-                  onChange={handleChange("end_date")} 
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="date"
+                  value={filters.end_date ?? ""}
+                  onChange={handleChange("end_date")}
+                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -545,9 +545,9 @@ const Reports = () => {
             <div className="flex flex-wrap gap-4 mb-4">
               <div className="flex flex-col flex-1 min-w-[200px]">
                 <label className="font-medium mb-1">Scope Type <span className="text-red-500">*</span></label>
-                <select 
-                  value={filters.scope_type ?? ""} 
-                  onChange={handleChange("scope_type")} 
+                <select
+                  value={filters.scope_type ?? ""}
+                  onChange={handleChange("scope_type")}
                   className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
@@ -558,9 +558,9 @@ const Reports = () => {
               {filters.scope_type && (
                 <div className="flex flex-col flex-1 min-w-[200px]">
                   <label className="font-medium mb-1">{scopeLabel} <span className="text-red-500">*</span></label>
-                  <select 
-                    value={filters.scope_id ?? ""} 
-                    onChange={handleChange("scope_id")} 
+                  <select
+                    value={filters.scope_id ?? ""}
+                    onChange={handleChange("scope_id")}
                     className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="" key="empty">Select</option>
@@ -576,20 +576,20 @@ const Reports = () => {
             <div className="flex gap-4 mb-4">
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">Start Date <span className="text-red-500">*</span></label>
-                <input 
-                  type="date" 
-                  value={filters.start_date ?? ""} 
-                  onChange={handleChange("start_date")} 
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="date"
+                  value={filters.start_date ?? ""}
+                  onChange={handleChange("start_date")}
+                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex flex-col flex-1">
                 <label className="font-medium mb-1">End Date <span className="text-red-500">*</span></label>
-                <input 
-                  type="date" 
-                  value={filters.end_date ?? ""} 
-                  onChange={handleChange("end_date")} 
-                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="date"
+                  value={filters.end_date ?? ""}
+                  onChange={handleChange("end_date")}
+                  className="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -604,7 +604,7 @@ const Reports = () => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border mb-6 max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Generate Reports</h2>
-      
+
       {isLoadingLists && (
         <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded">
           Loading projects, staff, and departments...
@@ -614,7 +614,7 @@ const Reports = () => {
       {!isLoadingLists && (
         <div className="mb-4 p-3 bg-gray-50 text-gray-600 rounded text-sm">
           <div>Loaded: {projectList.length} projects, {staffList.length} staff, {departmentList.length} departments</div>
-          
+
           <details className="mt-2">
             <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Show Debug Data</summary>
             <div className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-48">
@@ -634,7 +634,7 @@ const Reports = () => {
           </details>
         </div>
       )}
-      
+
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-700 mb-3">Select Report Type</h3>
         <div className="space-y-2">
@@ -728,7 +728,7 @@ const Reports = () => {
                 Period: {reportData.start_date} to {reportData.end_date}
               </p>
             )}
-            
+
             <details className="mt-2">
               <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800">Show Raw Data (Debug)</summary>
               <div className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-48">
@@ -736,7 +736,7 @@ const Reports = () => {
               </div>
             </details>
           </div>
-          
+
           <div className="p-6 overflow-auto">
             {selectedReport === "Task Completion Report" && reportData.tasks && (
               <div>
@@ -888,21 +888,21 @@ const Reports = () => {
                 )}
               </div>
             )}
-            
+
             {selectedReport === "Task Completion Report" && !reportData.tasks && (
               <div className="text-center py-8 text-red-500">
                 <p>Error: Report data structure is invalid. Expected 'tasks' array.</p>
                 <p className="text-sm mt-2">Check console for raw data.</p>
               </div>
             )}
-            
+
             {selectedReport === "Weekly/Monthly Team Summary" && !reportData.staff_summaries && (
               <div className="text-center py-8 text-red-500">
                 <p>Error: Report data structure is invalid. Expected 'staff_summaries' array.</p>
                 <p className="text-sm mt-2">Check console for raw data.</p>
               </div>
             )}
-            
+
             {selectedReport === "Logged Time per Project/Department" && !reportData.time_entries && (
               <div className="text-center py-8 text-red-500">
                 <p>Error: Report data structure is invalid. Expected 'time_entries' array.</p>
