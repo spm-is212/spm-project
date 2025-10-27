@@ -5,7 +5,7 @@ Full end-to-end tests for the SPM Project Management System
 import pytest
 import time
 from e2e_tests.pages.login_page import LoginPage
-from e2e_tests.test_data.test_users import TEST_USERS, TEST_TASKS, TEST_PROJECTS
+from e2e_tests.test_data.test_users import TEST_USERS
 
 
 @pytest.mark.regression
@@ -75,7 +75,6 @@ class TestCriticalUserFlows:
     def test_complete_task_creation_flow(self, authenticated_driver, base_url):
         """Test complete task creation from login to task created"""
         # This is a placeholder - update based on your actual UI
-        driver = authenticated_driver
         time.sleep(2)
         # TODO: Navigate to tasks, create task, verify created
         pytest.fail("Implement task creation flow")
@@ -83,7 +82,6 @@ class TestCriticalUserFlows:
     @pytest.mark.skip(reason="TODO: Implement project creation flow")
     def test_complete_project_creation_flow(self, authenticated_driver, base_url):
         """Test complete project creation flow"""
-        driver = authenticated_driver
         time.sleep(2)
         # TODO: Navigate to projects, create project, verify created
         pytest.fail("Implement project creation flow")

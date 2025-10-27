@@ -247,8 +247,8 @@ for filepath, content in FILES.items():
         f.write(content)
     print(f"✓ Created: {filepath}")
 
-print(f"\\n✅ Selenium test suite structure created successfully!")
-print(f"\\nNext steps:")
-print(f"1. Review and customize page locators in e2e_tests/pages/")
-print(f"2. Update test_users.py with your actual test user credentials")
-print(f"3. Run: pytest e2e_tests/ -v")
+print("\\n✅ Selenium test suite structure created successfully!")
+print("\\nNext steps:")
+print("1. Review and customize page locators in e2e_tests/pages/")
+print("2. Update test_users.py with your actual test user credentials")
+print("3. Run: pytest e2e_tests/ -v")

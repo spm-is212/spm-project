@@ -156,7 +156,7 @@ class LoggedTimeReportGenerator:
         """Create a LoggedTimeItem from task data"""
         due_date_str = task.get("due_date", "")
         status = task.get("status", "TO_DO")
-        
+
         # FIXED: Handle None/null time_log values
         time_log_value = task.get("time_log")
         if time_log_value is None:

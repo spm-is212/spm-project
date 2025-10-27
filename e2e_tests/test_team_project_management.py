@@ -7,8 +7,6 @@ import pytest
 from e2e_tests.pages.login_page import LoginPage
 from e2e_tests.test_data.test_users import TEST_USERS
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 pytestmark = pytest.mark.nondestructive
 

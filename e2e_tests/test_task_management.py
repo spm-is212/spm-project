@@ -4,6 +4,11 @@ Tests task creation, editing, archiving, sorting, and subtask management
 """
 import time
 import pytest
+from selenium.common.exceptions import (
+    ElementNotInteractableException,
+    NoSuchElementException,
+    StaleElementReferenceException,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -148,7 +153,7 @@ class TestTaskCreation:
 
             add_subtask_btn = driver.find_element(By.XPATH, "//button[contains(., 'Add New Subtask')]")
             subtask_feature_available = add_subtask_btn.is_displayed()
-        except:
+        except NoSuchElementException:
             pass
 
         # Verify Create button is enabled
@@ -276,7 +281,7 @@ class TestTaskEditing:
                         in_progress_option = select.find_element(By.XPATH, ".//option[@value='IN_PROGRESS']")
                         in_progress_option.click()
                         break
-                    except:
+                    except (NoSuchElementException, StaleElementReferenceException, ElementNotInteractableException):
                         continue
 
                 # Save
