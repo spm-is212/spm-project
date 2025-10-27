@@ -81,7 +81,6 @@ class TestDataIntegrity:
         time.sleep(2)
 
         # Navigate to another page (if exists)
-        original_url = driver.current_url
 
         # Refresh page
         driver.refresh()

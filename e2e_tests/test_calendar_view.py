@@ -4,11 +4,7 @@ Tests calendar navigation, task display, filtering, and modal interactions
 """
 import time
 import pytest
-from e2e_tests.pages.login_page import LoginPage
-from e2e_tests.test_data.test_users import TEST_USERS
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 pytestmark = pytest.mark.nondestructive
 
@@ -299,7 +295,7 @@ class TestTaskDetailsModal:
         task_blocks = driver.find_elements(By.XPATH, "//div[contains(@class, 'cursor-pointer') and contains(@class, 'text-xs') and contains(@class, 'p-1')]")
 
         if len(task_blocks) > 0:
-            task_title = task_blocks[0].text
+            task_blocks[0].text
             task_blocks[0].click()
             time.sleep(2)
 
@@ -334,7 +330,7 @@ class TestTaskDetailsModal:
                 time.sleep(1)
 
                 # Modal should be closed (no longer visible)
-                modals = driver.find_elements(By.XPATH, "//div[contains(@class, 'fixed') and contains(@class, 'inset-0') and contains(@class, 'z-50')]")
+                driver.find_elements(By.XPATH, "//div[contains(@class, 'fixed') and contains(@class, 'inset-0') and contains(@class, 'z-50')]")
 
                 # Modal might still exist in DOM but should not be visible
                 assert True, "Close button should dismiss modal"
